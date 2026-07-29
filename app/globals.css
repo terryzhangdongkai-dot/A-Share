@@ -850,7 +850,7 @@ a { color: inherit; }
 .atlas-company-grid dl div { display: grid; grid-template-columns: 65px 1fr; gap: 8px; font-size: .7em; }
 .atlas-company-grid dt { color: var(--muted); }
 .atlas-company-grid dd { margin: 0; }
-.atlas-card-actions { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-top: 12px; }
+.atlas-card-actions { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
 .atlas-card-actions button { border: 0; color: #3472d8; background: transparent; cursor: pointer; font-weight: 800; }
 .atlas-updates { padding: 18px; }
 .atlas-update-intro { display: flex; justify-content: space-between; margin-bottom: 12px; }
@@ -881,6 +881,7 @@ a { color: inherit; }
 .onepager-metrics article { padding: 13px; border: 1px solid var(--line); border-radius: 11px; background: white; }
 .onepager-metrics small { display: block; color: var(--muted); font-size: .63em; }
 .onepager-metrics b { display: block; margin-top: 6px; font-size: .78em; }
+.onepager-metrics em { display: block; margin-top: 4px; color: #e45353; font-size: .68em; font-style: normal; font-weight: 800; }
 .onepager-section { display: grid; grid-template-columns: 42px 1fr; gap: 12px; margin: 8px 0; padding: 15px; border: 1px solid var(--line); border-radius: 12px; background: white; }
 .onepager-section > span { color: #3d6ec6; font-family: ui-monospace, monospace; font-weight: 850; }
 .onepager-section h3 { margin: 0; font-size: .92em; }

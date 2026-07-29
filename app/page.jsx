@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { chainAtlasCompanyCount, chainAtlasSectors, chainAtlasStreams, chainAtlasUpdates } from "./chainAtlasData";
 import { earningsCompanies, earningsPhases } from "./earningsData";
+import { marketData, MARKET_DATA_COVERAGE, MARKET_DATA_GENERATED_AT } from "./marketData";
+import { sourceMonitorData, SOURCE_MONITOR_GENERATED_AT } from "./sourceMonitorData";
 
 const sourceLinks = {
   tsmc: "https://investor.tsmc.com/english/quarterly-results/2026/q2",
@@ -51,10 +53,10 @@ const navGroups = [
   {
     label: "每日更新",
     items: [
-      { id: "events", icon: "⌁", label: "产品发布", count: "18" },
-      { id: "papers", icon: "▤", label: "论文前沿", count: "26" },
-      { id: "deepread", icon: "▦", label: "KOL 深读", count: "32" },
-      { id: "interviews", icon: "▶", label: "访谈视频", count: "21" },
+      { id: "events", icon: "⌁", label: "产品发布", count: "10" },
+      { id: "papers", icon: "▤", label: "论文前沿", count: "9" },
+      { id: "deepread", icon: "▦", label: "KOL 深读", count: "9" },
+      { id: "interviews", icon: "▶", label: "访谈视频", count: "9" },
       { id: "hifreq", icon: "↗", label: "高频数据", count: "" },
       { id: "viewhub", icon: "❞", label: "观点聚合台", count: "" },
     ],
@@ -62,10 +64,10 @@ const navGroups = [
   {
     label: "跟踪看板",
     items: [
-      { id: "score", icon: "◇", label: "公司记分卡", count: "16" },
+      { id: "score", icon: "◇", label: "公司记分卡", count: "8" },
       { id: "cpo", icon: "✦", label: "CPO / 光模块", count: "重点" },
-      { id: "capex", icon: "↗", label: "资本开支看板", count: "9" },
-      { id: "statements", icon: "◌", label: "公司发言墙", count: "24" },
+      { id: "capex", icon: "↗", label: "资本开支看板", count: "5" },
+      { id: "statements", icon: "◌", label: "公司发言墙", count: "5" },
       { id: "tape", icon: "≋", label: "半导体 Tape", count: "" },
     ],
   },
@@ -240,6 +242,24 @@ function SourceLink({ href, label = "原始网站", compact = false }) {
   return <a className={`source-link ${compact ? "compact" : ""}`} href={href} target="_blank" rel="noreferrer">↗ {label}</a>;
 }
 
+const formatPrice = (quote) => {
+  if (!quote) return "暂无公开行情";
+  const prefix = quote.currency === "HKD" ? "HK$" : "¥";
+  return `${prefix}${Number(quote.price).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 3 })}`;
+};
+
+const formatMarketCap = (quote) => {
+  if (!quote?.marketCap) return "暂无公开数据";
+  const unit = quote.currency === "HKD" ? "亿港元" : "亿元";
+  return `≈${(quote.marketCap / 1e8).toLocaleString("zh-CN", { maximumFractionDigits: 1 })}${unit}`;
+};
+
+const formatMultiple = (value, lossLabel = "亏损 / 不适用") =>
+  typeof value === "number" && value > 0 ? `${value.toFixed(2)}×` : lossLabel;
+
+const formatShares = (quote) =>
+  quote?.totalShares ? `${(quote.totalShares / 1e8).toLocaleString("zh-CN", { maximumFractionDigits: 2 })}亿股` : "暂无公开数据";
+
 function Sparkline({ points = [18, 23, 21, 30, 34, 45, 51] }) {
   const max = Math.max(...points);
   const min = Math.min(...points);
@@ -325,7 +345,7 @@ function Home({ filteredEvents, favorites, toggleFavorite, go }) {
           <small>阅读路径：1 分钟看判断 → 5 分钟看事件 → 10 分钟进入 CPO 专题与公司矩阵 <SourceLink href={sourceLinks.broadcomCpo} label="判断输入原始网站" compact /></small>
         </section>
 
-        <SectionTitle icon="◉" title="今日三条判断" note="更新于 2026-07-29 · 研究判断优先于信息堆叠" />
+        <SectionTitle icon="◉" title="今日三条判断" note={`更新于 ${MARKET_DATA_GENERATED_AT} · 研究判断优先于信息堆叠`} />
         <section className="verdict-list">
           {[
             ["1", "CPO", "光互连从 800G/1.6T 可插拔走向多技术路线并行", "近期业绩由可插拔模块兑现，中期 CPO/NPO/LPO 提供增量；研究重点转向光芯片、CW 激光、FAU 与封装测试。", sourceLinks.broadcomCpo],
@@ -470,6 +490,7 @@ function ChainPage() {
   const companyRows = allBoardRows.filter((company) => !panelQuery || `${company.name} ${company.code} ${company.sector.name} ${company.positioning} ${company.variables}`.toLowerCase().includes(panelQuery.toLowerCase()));
   const boardTotal = sourceGroupSectors.reduce((sum, sector) => sum + sector.companies.length, 0);
   const selectedCompanyRecord = selected.companies.find((company) => company.name === selectedCompany);
+  const selectedQuote = selectedCompanyRecord?.code ? marketData[selectedCompanyRecord.code] : null;
   const companySource = selectedCompanyRecord?.href || selected.source;
   const chooseSector = (sector) => {
     setSelectedName(sector.name);
@@ -481,7 +502,11 @@ function ChainPage() {
     setOpenNames((current) => current.includes(sector.name) ? current : [...current, sector.name]);
   };
   const firstTreeMatch = chainAtlasSectors.flatMap((sector) => sector.companies.map((company) => ({ sector, company }))).find(({ company }) => `${company.name} ${company.code}`.toLowerCase().includes(treeQuery.toLowerCase()));
-  const sourceBoards = chainAtlasUpdates.map((update) => ({ ...update, names: chainAtlasSectors.filter((sector) => sector.source === update.source).map((sector) => sector.name) }));
+  const sourceBoards = chainAtlasUpdates.map((update) => ({
+    ...update,
+    ...(sourceMonitorData[update.source] || {}),
+    names: chainAtlasSectors.filter((sector) => sector.source === update.source).map((sector) => sector.name),
+  }));
   const changeTreeQuery = (value) => {
     setTreeQuery(value);
     if (value) {
@@ -491,7 +516,7 @@ function ChainPage() {
   };
   return (
     <>
-      <SectionTitle icon="◫" title="半导体产业链标的一页纸" note={`${chainAtlasStreams.length} 层 · ${chainAtlasSectors.length} 子行业 · ${chainAtlasCompanyCount} 家公司 · 全部附原始网站`} />
+      <SectionTitle icon="◫" title="半导体产业链标的一页纸" note={`${chainAtlasStreams.length} 层 · ${chainAtlasSectors.length} 子行业 · ${chainAtlasCompanyCount} 条映射 · ${MARKET_DATA_COVERAGE.updatedCodes}/${MARKET_DATA_COVERAGE.listedCodes} 个证券行情已更新至 ${MARKET_DATA_GENERATED_AT}`} />
       <div className="atlas-workbench">
         <aside className="atlas-tree">
           <label className="atlas-search">⌕ <input value={treeQuery} onChange={(event) => changeTreeQuery(event.target.value)} onKeyDown={(event) => {
@@ -547,7 +572,13 @@ function ChainPage() {
                 <div><span className={`freshness freshness-${board.freshness}`}>{board.relative}</span><em>LIVE</em></div>
                 <b>{new URL(board.source).hostname}</b>
                 <p>{board.names.join(" · ")}</p>
-                <small>{board.statedDate ? `来源声明 ${board.statedDate} · 刷新 ${board.refreshed}` : "无站内日期 · 按页面内容指纹监测"} · SHA-1 {board.hash.slice(0, 8)}… · 09:12 检查 · 未检测到新变化</small>
+                <small>
+                  {board.statedDate ? `来源声明 ${board.statedDate}` : "无站内日期 · 按页面内容指纹监测"}
+                  {" · "}{board.ok ? `HTTP ${board.httpStatus}` : "本次连接失败，保留上次指纹"}
+                  {" · "}SHA-1 {board.hash.slice(0, 8)}…
+                  {" · "}检查 {board.checkedAt || SOURCE_MONITOR_GENERATED_AT}
+                  {" · "}{board.changedSincePreviousCheck ? "检测到页面变化" : "未检测到新变化"}
+                </small>
                 <span onClick={(event) => event.stopPropagation()}><SourceLink href={board.source} label="打开原始来源站" /></span>
               </article>)}
             </div>
@@ -560,7 +591,7 @@ function ChainPage() {
               <h1>{selectedCompany || "半导体产业链"} · 个股扫描一页纸</h1>
               <p>{selected.streamName} / {sourceGroupSectors.map((sector) => sector.name).join(" / ")} · {boardTotal} NAMES</p>
               <b>事实由原始站点整理 · AI 摘要必须回源核验 · 点击公司查看完整研究卡片</b>
-              <div><span>更新日期：2026-07-29</span><span>数据源：{new URL(selected.source).hostname}</span><span>研究口径：业务定位 + 核心变量 + 证伪条件</span></div>
+              <div><span>行情更新时间：{selectedQuote?.updatedAt || MARKET_DATA_GENERATED_AT}</span><span>研究来源：{new URL(selected.source).hostname}</span><span>行情来源：东方财富行情中心</span></div>
             </div>
             {!selectedCompany && <>
               <div className="atlas-panel-tools">
@@ -575,8 +606,18 @@ function ChainPage() {
                     <span>{company.sector.name}</span>
                     <h3>{company.name} {company.code && <em>{company.code}</em>}</h3>
                     <p>{company.positioning}。<b>AI 研究摘要：</b>该公司位于“{company.sector.name}”环节，需结合原始站点核对业务占比与最新财务数据。</p>
-                    <dl><div><dt>现价 / 总市值</dt><dd>打开原站核验实时口径</dd></div><div><dt>核心变量</dt><dd>{company.variables}</dd></div><div><dt>证伪条件</dt><dd>订单、份额或盈利趋势未能按预期兑现</dd></div></dl>
-                    <div className="atlas-card-actions"><button onClick={() => { chooseSector(company.sector); setSelectedCompany(company.name); }}>打开完整一页纸 →</button><SourceLink href={company.href} label={company.href === company.sector.source ? "板块原始站" : "公司原始一页纸"} compact /></div>
+                    {(() => {
+                      const quote = company.code ? marketData[company.code] : null;
+                      return <dl>
+                        <div><dt>现价</dt><dd>{formatPrice(quote)}</dd></div>
+                        <div><dt>总市值</dt><dd>{formatMarketCap(quote)}</dd></div>
+                        <div><dt>PE / PB</dt><dd>{quote ? `${formatMultiple(quote.pe)} / ${formatMultiple(quote.pb, "—")}` : "暂无公开行情"}</dd></div>
+                        <div><dt>数据日期</dt><dd>{quote?.updatedAt || MARKET_DATA_GENERATED_AT}</dd></div>
+                        <div><dt>核心变量</dt><dd>{company.variables}</dd></div>
+                        <div><dt>证伪条件</dt><dd>订单、份额或盈利趋势未能按预期兑现</dd></div>
+                      </dl>;
+                    })()}
+                    <div className="atlas-card-actions"><button onClick={() => { chooseSector(company.sector); setSelectedCompany(company.name); }}>打开完整一页纸 →</button><SourceLink href={company.href} label={company.href === company.sector.source ? "板块原始站" : "公司原始一页纸"} compact />{company.code && marketData[company.code] && <SourceLink href={marketData[company.code].sourceUrl} label="最新行情原页" compact />}</div>
                   </article>
                 ))}
               </div>
@@ -585,12 +626,14 @@ function ChainPage() {
             {selectedCompany && <div className="company-onepager">
               <header><div><span>个股扫描 · 一页纸</span><h2>{selectedCompany} <em>{selected.companies.find((company) => company.name === selectedCompany)?.code}</em></h2><p>{positioning}</p></div><button onClick={() => setSelectedCompany("")}>返回板块全量</button></header>
               <div className="onepager-metrics">
-                <article><small>现价</small><b>打开原始页核验</b></article>
-                <article><small>总市值</small><b>打开原始页核验</b></article>
-                <article><small>PE / PB / 股本</small><b>以最新披露为准</b></article>
+                <article><small>现价</small><b>{formatPrice(selectedQuote)}</b><em>{selectedQuote?.changePercent == null ? "—" : `${selectedQuote.changePercent >= 0 ? "+" : ""}${selectedQuote.changePercent.toFixed(2)}%`}</em></article>
+                <article><small>总市值</small><b>{formatMarketCap(selectedQuote)}</b></article>
+                <article><small>PE / PB</small><b>{selectedQuote ? `${formatMultiple(selectedQuote.pe)} / ${formatMultiple(selectedQuote.pb, "—")}` : "暂无公开行情"}</b></article>
+                <article><small>总股本</small><b>{formatShares(selectedQuote)}</b></article>
                 <article><small>产业链位置</small><b>{selected.streamName}</b></article>
                 <article><small>细分环节</small><b>{selected.name}</b></article>
-                <article><small>原始来源</small><b>{new URL(selected.source).hostname}</b></article>
+                <article><small>行情数据日期</small><b>{selectedQuote?.updatedAt || MARKET_DATA_GENERATED_AT}</b></article>
+                <article><small>行情来源</small><b>{selectedQuote?.sourceName || "暂无上市证券代码"}</b>{selectedQuote && <SourceLink href={selectedQuote.sourceUrl} label="行情原页" compact />}</article>
               </div>
               {[
                 ["01", "业务构成", `AI 总结：围绕${selected.name}梳理收入板块、业务占比、同比变化和毛利贡献；最新数字必须在原始网站或公司公告核验。`],
@@ -598,7 +641,7 @@ function ChainPage() {
                 ["03", "放量逻辑与敏感性", "AI 总结：把订单、价格、良率、产能和客户份额拆成中性/乐观/压力三种情景，不用单一 TAM 直接推导利润。"],
                 ["04", "估值与市值空间", "AI 总结：采用分部估值、周期主业 PE 与核心成长业务独立倍数；页面不展示未经实时行情核验的目标价。"],
                 ["05", "催化剂与风险证伪", "催化剂：订单、认证、扩产和财报兑现。证伪：需求下降、价格快降、份额流失、良率或现金流恶化。"],
-              ].map(([num, title, copy]) => <article className="onepager-section" key={num}><span>{num}</span><div><h3>{title}</h3><p>{copy}</p><SourceLink href={companySource} label={companySource === selected.source ? `${selectedCompany} 板块原始站` : `${selectedCompany} 完整原始一页纸`} /></div></article>)}
+              ].map(([num, title, copy]) => <article className="onepager-section" key={num}><span>{num}</span><div><h3>{title}</h3><p>{copy}</p><SourceLink href={companySource} label={companySource === selected.source ? `${selectedCompany} 板块原始站` : `${selectedCompany} 完整原始一页纸`} />{num === "04" && selectedQuote && <SourceLink href={selectedQuote.sourceUrl} label={`估值行情原页 · ${selectedQuote.updatedAt}`} />}</div></article>)}
               <div className="onepager-tables">
                 <table><thead><tr><th>业务 / 指标</th><th>收入占比</th><th>同比</th><th>毛利率</th><th>核验状态</th></tr></thead><tbody><tr><td>{selected.name}核心业务</td><td colSpan="3">不在无实时数据时编造数值</td><td><SourceLink href={companySource} label="原始披露" compact /></td></tr></tbody></table>
                 <table><thead><tr><th>情景</th><th>订单 / 价格 / 良率假设</th><th>估值口径</th><th>研究动作</th></tr></thead><tbody><tr><td>压力</td><td>任一核心变量低于验证线</td><td>周期主业保守倍数</td><td>等待证据</td></tr><tr><td>中性</td><td>订单与盈利按原始指引兑现</td><td>分部估值</td><td>持续跟踪</td></tr><tr><td>乐观</td><td>份额与产品结构共同改善</td><td>成长业务独立倍数</td><td>需二次核验</td></tr></tbody></table>
@@ -856,7 +899,7 @@ function DailyPage({ items, favorites, toggleFavorite, go }) {
         <nav>{Object.keys(dailySources).map((group) => <button key={group} className={sourceGroup === group ? "active" : ""} onClick={() => setSourceGroup(group)}>{group}<small>{dailySources[group].length} 源</small></button>)}</nav>
         <section>
           <div className="daily-hub-head"><b>{sourceGroup}</b><span>最后刷新 {sourceUpdated} · 无需登录</span></div>
-          {dailySources[sourceGroup].map(([name, desc, time, url]) => <article key={name} data-search={`${name} ${desc}`}><div><span className="live-dot" /><b>{name}</b><small>{time}</small></div><p><b>AI 总结：</b>{desc}</p><SourceLink href={url} label="打开原始网站" /></article>)}
+          {dailySources[sourceGroup].map(([name, desc, , url]) => <article key={name} data-search={`${name} ${desc}`}><div><span className="live-dot" /><b>{name}</b><small>核验 {MARKET_DATA_GENERATED_AT.slice(5, 16)}</small></div><p><b>AI 总结：</b>{desc}</p><SourceLink href={url} label="打开原始网站" /></article>)}
         </section>
       </div>
       <section className="digest"><div><b>📌 今日导读：</b>CPO/光模块位于第一优先级；其次为 HBM、先进封装与晶圆设备。</div><small>阅读路径：1 分钟速览 → 10 分钟分页 → 1 小时 KOL 深读专题包 <SourceLink href={sourceLinks.broadcomCpo} label="判断输入原始网站" compact /></small></section>
@@ -981,7 +1024,7 @@ function EarningsPage() {
         <small>BUY-SIDE RESEARCH · GLOBAL TECH · EARNINGS MAP</small>
         <h1>AI 与半导体产业链业绩季地图</h1>
         <p>按“上游设备与代工 → 云厂大盘股 → GPU/WFE/存储 → ASIC/云/内存收尾”排序；已披露公司展示实际值，未披露公司展示一致预期或公司指引。</p>
-        <div><span>数据截至 2026-07-29</span><span>35 家核心与配套公司</span><span>A=公司 IR · B=一致预期 · C=待确认</span></div>
+        <div><span>数据截至 {MARKET_DATA_GENERATED_AT}</span><span>{earningsCompanies.length} 家核心与配套公司</span><span>A=公司 IR · B=一致预期 · C=待确认</span></div>
       </section>
       <section className="earnings-handbook-banner">
         <div><small>深挂载 · 半导体专题</small><b>核心公司业绩关注手册</b><p>收入兑现、利润质量、现金与资本开支、管理层语言四层指标；覆盖 TSMC、NVIDIA、Broadcom、Micron 与 CPO 读数。</p></div>
@@ -1126,7 +1169,7 @@ export default function Page() {
   const [onlyImportant, setOnlyImportant] = useState(false);
   const [last7Days, setLast7Days] = useState(true);
   const [favorites, setFavorites] = useState([]);
-  const [updated, setUpdated] = useState("07-29 08:42");
+  const [updated, setUpdated] = useState(MARKET_DATA_GENERATED_AT.slice(5, 16));
   const [toast, setToast] = useState("");
 
   useEffect(() => {
@@ -1232,7 +1275,7 @@ export default function Page() {
         <div className="side-status">
           <span><i className="live-dot" />研究数据已同步</span>
           <small>更新 {updated} · 北京</small>
-          <small>A级来源 4 · 研究事件 {events.length}</small>
+          <small>A级来源 {events.filter((event) => event.grade === "A").length} · 研究事件 {events.length}</small>
         </div>
       </aside>
 
