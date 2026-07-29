@@ -1,0 +1,20 @@
+{
+  "name": "semiconductor-pulse-cn",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vinext dev --hostname 0.0.0.0",
+    "build": "vinext build"
+  },
+  "dependencies": {
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-server-dom-webpack": "19.2.8",
+    "vinext": "0.0.19"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-rsc": "0.5.30",
+    "vite": "7.3.6"
+  }
+}
