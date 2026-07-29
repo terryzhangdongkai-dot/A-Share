@@ -804,6 +804,12 @@ a { color: inherit; }
 .source-link.compact { margin-left: 5px; font-size: .68em; }
 .cpo-hero .source-link, .earnings-hero .source-link { color: #bfeaff; }
 .atlas-workbench { display: grid; grid-template-columns: 310px minmax(0, 1fr); height: calc(100vh - 155px); min-height: 720px; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); }
+.market-live-status { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; margin: 0 0 10px; padding: 10px 14px; border: 1px solid #cfe8d5; border-radius: 12px; background: #f2fbf4; color: #24703b; font-size: .74em; }
+.market-live-status span { font-weight: 800; }
+.market-live-status small { color: #65806c; }
+.market-live-status button { padding: 7px 11px; border: 1px solid #b9d7c0; border-radius: 9px; background: white; color: #24703b; cursor: pointer; font-weight: 800; }
+.market-live-status button:disabled { cursor: wait; opacity: .65; }
+.market-live-status.has-error { border-color: #efcf9f; background: #fff8ed; color: #9b5d13; }
 .atlas-tree { display: flex; min-width: 0; flex-direction: column; padding: 12px 10px; border-right: 1px solid var(--line); background: color-mix(in srgb, var(--paper) 90%, #dfeaff); }
 .atlas-tree .atlas-search { min-width: 0; margin-bottom: 10px; background: white; }
 .atlas-tree-scroll { overflow-y: auto; padding-right: 4px; }
@@ -1050,6 +1056,8 @@ a { color: inherit; }
   .earnings-details summary > small, .earnings-details summary > strong { grid-column: 2 / 4; }
 }
 @media (max-width: 600px) {
+  .market-live-status { grid-template-columns: 1fr auto; gap: 7px; }
+  .market-live-status small { grid-column: 1 / -1; }
   .topbar { padding: 8px 10px; }
   .search { min-width: 0; }
   .refresh { display: none; }

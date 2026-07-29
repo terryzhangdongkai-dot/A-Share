@@ -260,6 +260,69 @@ const formatMultiple = (value, lossLabel = "亏损 / 不适用") =>
 const formatShares = (quote) =>
   quote?.totalShares ? `${(quote.totalShares / 1e8).toLocaleString("zh-CN", { maximumFractionDigits: 2 })}亿股` : "暂无公开数据";
 
+const MARKET_POLL_INTERVAL = 60_000;
+const marketSecid = (code) => {
+  if (code.length < 6) return `116.${code.padStart(5, "0")}`;
+  return `${code.startsWith("6") ? "1" : "0"}.${code}`;
+};
+const marketTimestamp = (seconds) => new Intl.DateTimeFormat("zh-CN", {
+  timeZone: "Asia/Shanghai",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+}).format(new Date(seconds * 1000)).replaceAll("/", "-");
+const isMainlandTradingSession = () => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Shanghai",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  if (["Sat", "Sun"].includes(values.weekday)) return false;
+  const minutes = Number(values.hour) * 60 + Number(values.minute);
+  return (minutes >= 9 * 60 + 15 && minutes <= 11 * 60 + 35)
+    || (minutes >= 12 * 60 + 55 && minutes <= 15 * 60 + 5);
+};
+const fetchLatestMarketData = async (signal) => {
+  const codes = Object.keys(marketData);
+  const batches = [];
+  for (let offset = 0; offset < codes.length; offset += 70) batches.push(codes.slice(offset, offset + 70));
+  const rows = (await Promise.all(batches.map(async (batch) => {
+    const url = new URL("https://push2delay.eastmoney.com/api/qt/ulist.np/get");
+    url.searchParams.set("fltt", "2");
+    url.searchParams.set("secids", batch.map(marketSecid).join(","));
+    url.searchParams.set("fields", "f2,f3,f9,f12,f14,f20,f23,f124");
+    url.searchParams.set("_", String(Date.now()));
+    const response = await fetch(url, { cache: "no-store", signal });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    return payload?.data?.diff || [];
+  }))).flat();
+  const byCode = new Map(rows.map((row) => [String(row.f12), row]));
+  return Object.fromEntries(codes.map((code) => {
+    const previous = marketData[code];
+    const row = byCode.get(code.length < 6 ? code.padStart(5, "0") : code);
+    if (!row || typeof row.f2 !== "number" || row.f2 <= 0) return [code, previous];
+    return [code, {
+      ...previous,
+      name: row.f14 || previous.name,
+      price: row.f2,
+      changePercent: typeof row.f3 === "number" ? row.f3 : previous.changePercent,
+      marketCap: typeof row.f20 === "number" ? row.f20 : previous.marketCap,
+      pe: typeof row.f9 === "number" ? row.f9 : previous.pe,
+      pb: typeof row.f23 === "number" ? row.f23 : previous.pb,
+      totalShares: typeof row.f20 === "number" ? row.f20 / row.f2 : previous.totalShares,
+      updatedAt: typeof row.f124 === "number" ? marketTimestamp(row.f124) : previous.updatedAt,
+    }];
+  }));
+};
+
 function Sparkline({ points = [18, 23, 21, 30, 34, 45, 51] }) {
   const max = Math.max(...points);
   const min = Math.min(...points);
@@ -478,6 +541,43 @@ function ChainPage() {
   const [showUpdates, setShowUpdates] = useState(true);
   const [activeBoardTag, setActiveBoardTag] = useState("全部");
   const [embeddedUrl, setEmbeddedUrl] = useState("");
+  const [liveMarketData, setLiveMarketData] = useState(marketData);
+  const [marketStatus, setMarketStatus] = useState({
+    loading: false,
+    error: "",
+    checkedAt: MARKET_DATA_GENERATED_AT,
+  });
+  const refreshMarket = async (signal) => {
+    setMarketStatus((current) => ({ ...current, loading: true, error: "" }));
+    try {
+      const latest = await fetchLatestMarketData(signal);
+      if (signal?.aborted) return;
+      setLiveMarketData(latest);
+      setMarketStatus({
+        loading: false,
+        error: "",
+        checkedAt: marketTimestamp(Math.floor(Date.now() / 1000)),
+      });
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+      setMarketStatus((current) => ({
+        ...current,
+        loading: false,
+        error: "实时接口暂不可用，正在显示最近一次成功数据",
+      }));
+    }
+  };
+  useEffect(() => {
+    const controller = new AbortController();
+    refreshMarket(controller.signal);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible" && isMainlandTradingSession()) refreshMarket(controller.signal);
+    }, MARKET_POLL_INTERVAL);
+    return () => {
+      window.clearInterval(timer);
+      controller.abort();
+    };
+  }, []);
   const selected = chainAtlasSectors.find((item) => item.name === selectedName) || defaultSector;
   const [positioning, variables] = sectorResearch[selected.name] || [`${selected.name}产业链重点公司集合`, "订单 · 价格 · 份额 · 良率 · 资本开支"];
   const matchesTree = (sector) => !treeQuery || `${sector.name} ${sector.companies.map((company) => `${company.name} ${company.code}`).join(" ")}`.toLowerCase().includes(treeQuery.toLowerCase());
@@ -490,7 +590,7 @@ function ChainPage() {
   const companyRows = allBoardRows.filter((company) => !panelQuery || `${company.name} ${company.code} ${company.sector.name} ${company.positioning} ${company.variables}`.toLowerCase().includes(panelQuery.toLowerCase()));
   const boardTotal = sourceGroupSectors.reduce((sum, sector) => sum + sector.companies.length, 0);
   const selectedCompanyRecord = selected.companies.find((company) => company.name === selectedCompany);
-  const selectedQuote = selectedCompanyRecord?.code ? marketData[selectedCompanyRecord.code] : null;
+  const selectedQuote = selectedCompanyRecord?.code ? liveMarketData[selectedCompanyRecord.code] : null;
   const companySource = selectedCompanyRecord?.href || selected.source;
   const chooseSector = (sector) => {
     setSelectedName(sector.name);
@@ -516,7 +616,12 @@ function ChainPage() {
   };
   return (
     <>
-      <SectionTitle icon="◫" title="半导体产业链标的一页纸" note={`${chainAtlasStreams.length} 层 · ${chainAtlasSectors.length} 子行业 · ${chainAtlasCompanyCount} 条映射 · ${MARKET_DATA_COVERAGE.updatedCodes}/${MARKET_DATA_COVERAGE.listedCodes} 个证券行情已更新至 ${MARKET_DATA_GENERATED_AT}`} />
+      <SectionTitle icon="◫" title="半导体产业链标的一页纸" note={`${chainAtlasStreams.length} 层 · ${chainAtlasSectors.length} 子行业 · ${chainAtlasCompanyCount} 条映射 · ${MARKET_DATA_COVERAGE.updatedCodes}/${MARKET_DATA_COVERAGE.listedCodes} 个证券行情`} />
+      <div className={`market-live-status ${marketStatus.error ? "has-error" : ""}`}>
+        <span><i className="live-dot" />{marketStatus.loading ? "正在获取最新行情…" : marketStatus.error || "东方财富准实时行情已连接"}</span>
+        <small>最近核验 {marketStatus.checkedAt} · 交易时段每 60 秒批量刷新 · 收盘后停止轮询</small>
+        <button disabled={marketStatus.loading} onClick={() => refreshMarket()}>{marketStatus.loading ? "刷新中" : "立即刷新"}</button>
+      </div>
       <div className="atlas-workbench">
         <aside className="atlas-tree">
           <label className="atlas-search">⌕ <input value={treeQuery} onChange={(event) => changeTreeQuery(event.target.value)} onKeyDown={(event) => {
@@ -607,7 +712,7 @@ function ChainPage() {
                     <h3>{company.name} {company.code && <em>{company.code}</em>}</h3>
                     <p>{company.positioning}。<b>AI 研究摘要：</b>该公司位于“{company.sector.name}”环节，需结合原始站点核对业务占比与最新财务数据。</p>
                     {(() => {
-                      const quote = company.code ? marketData[company.code] : null;
+                      const quote = company.code ? liveMarketData[company.code] : null;
                       return <dl>
                         <div><dt>现价</dt><dd>{formatPrice(quote)}</dd></div>
                         <div><dt>总市值</dt><dd>{formatMarketCap(quote)}</dd></div>
@@ -617,7 +722,7 @@ function ChainPage() {
                         <div><dt>证伪条件</dt><dd>订单、份额或盈利趋势未能按预期兑现</dd></div>
                       </dl>;
                     })()}
-                    <div className="atlas-card-actions"><button onClick={() => { chooseSector(company.sector); setSelectedCompany(company.name); }}>打开完整一页纸 →</button><SourceLink href={company.href} label={company.href === company.sector.source ? "板块原始站" : "公司原始一页纸"} compact />{company.code && marketData[company.code] && <SourceLink href={marketData[company.code].sourceUrl} label="最新行情原页" compact />}</div>
+                    <div className="atlas-card-actions"><button onClick={() => { chooseSector(company.sector); setSelectedCompany(company.name); }}>打开完整一页纸 →</button><SourceLink href={company.href} label={company.href === company.sector.source ? "板块原始站" : "公司原始一页纸"} compact />{company.code && liveMarketData[company.code] && <SourceLink href={liveMarketData[company.code].sourceUrl} label="最新行情原页" compact />}</div>
                   </article>
                 ))}
               </div>

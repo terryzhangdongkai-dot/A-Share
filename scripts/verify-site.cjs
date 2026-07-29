@@ -14,10 +14,14 @@ let browser;
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   page.setDefaultTimeout(15000);
   const errors = [];
+  let marketResponses = 0;
   page.on("console", (message) => {
     if (message.type() === "error" && !message.text().includes("Failed to load resource")) errors.push(message.text());
   });
   page.on("pageerror", (error) => errors.push(error.message));
+  page.on("response", (response) => {
+    if (response.url().includes("eastmoney.com/api/qt/ulist.np/get") && response.ok()) marketResponses += 1;
+  });
 
   await page.goto(target, { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForSelector(".app");
@@ -26,6 +30,11 @@ let browser;
 
   await page.getByRole("button", { name: /半导体产业链标的一页纸/ }).click();
   console.log("checkpoint: chain");
+  await page.getByText("东方财富准实时行情已连接").waitFor();
+  assert(marketResponses === 4, `首次批量行情请求应为 4 次，实际 ${marketResponses}`);
+  await page.getByRole("button", { name: "立即刷新" }).click();
+  await page.getByText("东方财富准实时行情已连接").waitFor();
+  assert(marketResponses === 8, `手动刷新后累计行情请求应为 8 次，实际 ${marketResponses}`);
   await page.locator(".atlas-search input").fill("600176");
   await page.locator(".atlas-search input").press("Enter");
   await page.waitForSelector(".company-onepager");
@@ -58,6 +67,7 @@ let browser;
   console.log(JSON.stringify({
     target,
     marketCoverage: "266/266",
+    marketResponses,
     sourceBoards: 15,
     earningsCompanies: 35,
     bodyWidth,
