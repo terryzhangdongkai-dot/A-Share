@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vinext dev --hostname 0.0.0.0",
-    "build": "vinext build"
+    "build": "vinext build && node scripts/copy-hosting.mjs"
   },
   "dependencies": {
     "react": "19.2.8",
