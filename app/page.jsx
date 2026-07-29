@@ -20,17 +20,17 @@ const navGroups = [
   {
     label: "交互协同",
     items: [
-      { id: "daily", icon: "◉", label: "每日半导体日报", count: "" },
-      { id: "chain", icon: "◫", label: "产业链标的一页纸", count: "10" },
+      { id: "daily", icon: "◉", label: "每日半导体日报聚合", count: "" },
+      { id: "chain", icon: "◫", label: "半导体产业链标的一页纸", count: "10" },
     ],
   },
   {
     label: "每日更新",
     items: [
-      { id: "events", icon: "⌁", label: "产品与公司事件", count: "18" },
-      { id: "papers", icon: "▤", label: "论文与技术前沿", count: "26" },
-      { id: "deepread", icon: "▦", label: "机构与 KOL 深读", count: "32" },
-      { id: "interviews", icon: "▶", label: "访谈与业绩会", count: "21" },
+      { id: "events", icon: "⌁", label: "产品发布", count: "18" },
+      { id: "papers", icon: "▤", label: "论文前沿", count: "26" },
+      { id: "deepread", icon: "▦", label: "KOL 深读", count: "32" },
+      { id: "interviews", icon: "▶", label: "访谈视频", count: "21" },
       { id: "hifreq", icon: "↗", label: "高频数据", count: "" },
       { id: "viewhub", icon: "❞", label: "观点聚合台", count: "" },
     ],
@@ -406,10 +406,53 @@ function EventStream({ items, favorites, toggleFavorite, title = "关键事件�
   );
 }
 
+const chainAtlas = [
+  ["晶圆代工", "TSMC · 中芯国际 · 华虹公司 · 联电", "先进节点、AI ASIC、成熟制程", "2nm/GAA 进度 · 稼动率 · 晶圆价格", "07-29"],
+  ["半导体设备", "北方华创 · 中微公司 · ASML · AMAT · LRCX", "刻蚀、薄膜、光刻、清洗、量检测", "订单增速 · 国产验证 · 交付周期", "07-29"],
+  ["半导体材料", "安集科技 · 江丰电子 · 沪硅产业 · 雅克科技", "CMP、靶材、硅片、前驱体", "客户认证 · 份额 · 扩产良率", "07-28"],
+  ["先进封装", "长电科技 · 通富微电 · ASMPT · BESI", "CoWoS、Hybrid Bonding、Chiplet", "设备交期 · 基板供给 · 良率", "07-29"],
+  ["存储 / HBM", "SK hynix · Micron · Samsung · 长鑫存储", "HBM4、DRAM、企业级 NAND", "合约价 · TSV 良率 · 长协占比", "07-29"],
+  ["GPU / XPU", "NVIDIA · AMD · Broadcom · 海光信息", "训练、推理、定制 ASIC", "机架交付 · 互连域 · 客户集中度", "07-29"],
+  ["交换芯片", "Broadcom · Marvell · 盛科通信", "51.2T / 102.4T Ethernet", "SerDes · 端口速率 · CPO 导入", "07-28"],
+  ["光模块", "中际旭创 · 新易盛 · 光迅科技 · Fabrinet", "800G、1.6T、LPO、CPO", "出货结构 · 年降 · 良率 · 客户份额", "07-29"],
+  ["光芯片 / 器件", "天孚通信 · 源杰科技 · Coherent · Lumentum", "EML、CW Laser、FAU、硅光", "认证 · 自制率 · 耦合良率 · 产能", "07-29"],
+  ["数据中心配套", "工业富联 · Vertiv · 液冷/电力设备链", "机柜、液冷、供配电、园区网络", "订单 · 交付 · 电力接入 · PUE", "07-27"],
+];
+
 function ChainPage() {
+  const [segment, setSegment] = useState("全部");
+  const [atlasQuery, setAtlasQuery] = useState("");
+  const visibleAtlas = chainAtlas.filter((row) => {
+    const inSegment = segment === "全部" || row[0] === segment;
+    const inSearch = !atlasQuery || row.join(" ").toLowerCase().includes(atlasQuery.toLowerCase());
+    return inSegment && inSearch;
+  });
   return (
     <>
-      <SectionTitle icon="◫" title="半导体产业链地图" note="从需求到材料的八层拆解" />
+      <SectionTitle icon="◫" title="半导体产业链标的一页纸" note="十个环节 · 公司映射 · 核心变量 · 最近刷新" />
+      <div className="atlas-toolbar">
+        <label className="atlas-search">⌕ <input value={atlasQuery} onChange={(e) => setAtlasQuery(e.target.value)} placeholder="搜索公司、环节或变量" /></label>
+        <span>LIVE {chainAtlas.length} 子行业 · {chainAtlas.reduce((sum, row) => sum + row[1].split(" · ").length, 0)} 家重点公司</span>
+      </div>
+      <div className="filter-row atlas-filters">
+        {["全部", ...chainAtlas.map((row) => row[0])].map((item) => <button key={item} className={segment === item ? "active" : ""} onClick={() => setSegment(item)}>{item}</button>)}
+      </div>
+      <div className="atlas-grid">
+        {visibleAtlas.map(([name, names, exposure, variables, refreshed]) => (
+          <details key={name} data-search={`${name} ${names} ${exposure} ${variables}`} open={visibleAtlas.length === 1}>
+            <summary><span className="live-dot" /><b>{name}</b><em>LIVE · {names.split(" · ").length} 家</em></summary>
+            <p className="atlas-names">{names}</p>
+            <dl><div><dt>核心暴露</dt><dd>{exposure}</dd></div><div><dt>跟踪变量</dt><dd>{variables}</dd></div></dl>
+            <small>最近刷新 {refreshed} · 点击收起</small>
+          </details>
+        ))}
+      </div>
+      {visibleAtlas.length === 0 && <div className="empty">没有匹配的产业链标的。</div>}
+      <SectionTitle icon="↻" title="谁最近刷新了数据与结论" note="按最近验证时间排序" />
+      <div className="refresh-strip">
+        {chainAtlas.slice().sort((a, b) => b[4].localeCompare(a[4])).slice(0, 5).map((row) => <span key={row[0]}><b>{row[0]}</b><small>{row[4]}</small></span>)}
+      </div>
+      <SectionTitle icon="◫" title="产业链景气地图" note="从需求到材料的八层拆解" />
       <div className="chain-map">
         {chain.map((item, index) => (
           <article key={item.name}>
@@ -489,6 +532,48 @@ function CapexPage() {
   );
 }
 
+const productReleases = [
+  ["07-29", "🔴", "CPO / 光模块", "Broadcom", "102.4T 交换平台与 CPO 光引擎路线继续推进", "平台带宽密度决定 CPO 导入窗口，外置 CW 激光和 FAU 的验证优先级上升。", "官方产品页", "A"],
+  ["07-29", "🔴", "光模块", "中际旭创", "1.6T 产品由客户验证转向小批量交付观察期", "真正需要验证的是单通道 200G 良率、长协价格和客户结构，而不是只看样品发布。", "公司交流", "B"],
+  ["07-28", "🟡", "GPU / XPU", "NVIDIA", "Rubin 平台进入系统级量产准备", "互连带宽与机架功耗同步上升，拉动 HBM、交换芯片、光互连和液冷价值量。", "公司公告", "A"],
+  ["07-28", "🟡", "硅光", "Coherent", "新一代 200G/lane 光器件组合更新", "上游 EML、硅光耦合、驱动器和测试环节的良率是盈利弹性的核心。", "公司产品页", "A"],
+  ["07-27", "🟡", "设备", "ASML", "High-NA EUV 客户导入里程碑更新", "先进逻辑资本开支能见度维持，但订单确认与收入确认存在明显时滞。", "公司新闻稿", "A"],
+  ["07-27", "○", "存储 / HBM", "Micron", "HBM4 工程样品与产能规划更新", "关注客户认证、TSV 良率和传统 DRAM 与 HBM 之间的资本配置。", "公司 IR", "A"],
+  ["07-26", "○", "先进封装", "BESI", "混合键合设备平台迭代", "若键合精度与吞吐率同时改善，可能改变先进封装设备价值量分配。", "技术发布", "B"],
+  ["07-25", "○", "网络", "Marvell", "面向 AI 集群的 1.6T DSP 与互连方案", "DSP 功耗、链路预算及供给多元化影响 1.6T 模块成本曲线。", "官方博客", "A"],
+  ["07-24", "○", "材料", "安集科技", "先进节点 CMP 材料验证进展", "量产验证比送样更重要，需结合客户产线份额和毛利率观察。", "公司公告", "A"],
+  ["07-23", "○", "光器件", "Lumentum", "高功率 CW 激光器产品组合扩展", "CPO 外置光源架构扩大潜在市场，但可靠性和多源供应仍需验证。", "公司产品页", "A"],
+];
+
+function ProductReleasePage() {
+  const [scope, setScope] = useState("全部");
+  const [saved, setSaved] = useState([]);
+  const scopes = ["全部", ...new Set(productReleases.map((row) => row[2]))];
+  const visible = productReleases.filter((row) => scope === "全部" || row[2] === scope);
+  const toggle = (key) => setSaved((current) => current.includes(key) ? current.filter((x) => x !== key) : [...current, key]);
+  return (
+    <>
+      <SectionTitle icon="⌁" title="产品发布" note="官方公告优先 · 按产业影响而非新闻热度排序" />
+      <section className="digest"><div><b>先看这里：</b>近 7 天按重要性初筛，🔴 必看、🟡 关注；每条说明“为什么值得看”和下一步验证重点。</div><small>发布 ≠ 量产；样品、客户验证、小批量、规模收入分层记录。</small></section>
+      <div className="filter-row">{scopes.map((item) => <button key={item} className={scope === item ? "active" : ""} onClick={() => setScope(item)}>{item}</button>)}</div>
+      <div className="release-grid">
+        {visible.map(([date, priority, category, company, title, why, source, grade]) => {
+          const key = `${date}-${company}-${title}`;
+          return <details key={key} data-search={`${date} ${category} ${company} ${title} ${why} ${source}`} open={priority === "🔴"}>
+            <summary><span>{priority}</span><time>{date}</time><em>{category}</em><b>{company} · {title}</b><button className={saved.includes(key) ? "saved" : ""} onClick={(e) => { e.preventDefault(); toggle(key); }} aria-label="收藏">{saved.includes(key) ? "★" : "☆"}</button></summary>
+            <p>{why}</p><small><Grade value={grade} /> {source} · 下一验证：订单、良率、客户认证与收入确认</small>
+          </details>;
+        })}
+      </div>
+      <div className="source-columns">
+        <article><b>官方公告 · 一手（A 级）</b><span>{productReleases.filter((x) => x[7] === "A").length} 条</span><p>公司 IR、产品页、监管文件与官方技术博客。</p></article>
+        <article><b>产业链交叉验证（B 级）</b><span>{productReleases.filter((x) => x[7] === "B").length} 条</span><p>至少两个独立渠道方向一致，金额与时间仍回一手。</p></article>
+        <article><b>我的收藏</b><span>{saved.length} 条</span><p>点击每条右上角 ☆，用于后续精华沉淀。</p></article>
+      </div>
+    </>
+  );
+}
+
 const researchFeeds = {
   papers: {
     title: "论文与技术前沿",
@@ -499,6 +584,11 @@ const researchFeeds = {
       ["硅光", "单通道 200G 光电接口与 1.6T 模块工程化", "光芯片、驱动器、TIA、封装耦合和测试成本共同决定良率", "产业技术报告 / B"],
       ["先进封装", "光电共封装中的热机械可靠性与 Known Good Die", "封装测试会成为 CPO 规模化的关键瓶颈", "IEEE / B"],
       ["AI 系统", "Scale-up 网络从铜互连向光互连迁移的边界", "机柜带宽密度和距离决定铜/光切换点，而非单一速率", "系统研究 / B"],
+      ["推理效率", "KV cache 分层与存储带宽优化", "推理侧从单纯增加 HBM 转向 HBM、DRAM、SSD 的分层调度，影响存储需求结构", "arXiv / B"],
+      ["网络架构", "102.4T 交换芯片下的 SerDes 与光口密度", "比较 200G/lane、铜缆距离、前面板功耗与 CPO 光引擎的系统边界", "OFC / B"],
+      ["厂商报告", "Broadcom CPO 系统架构与外置光源", "官方方案用于确认产品结构；量产时点仍需客户与供应链交叉验证", "公司技术报告 / A"],
+      ["厂商报告", "NVIDIA Rubin 网络与机架级互连", "从系统拓扑推导交换端口、光模块、铜缆与液冷价值量，而非只看 GPU 数量", "公司白皮书 / A"],
+      ["测试可靠性", "1.6T 光模块误码、老化与自动化测试", "测试时长和设备吞吐率可能成为良率爬坡与交付节奏的隐性瓶颈", "IEEE / B"],
     ],
   },
   deepread: {
@@ -509,6 +599,10 @@ const researchFeeds = {
       ["1.6T 阅读包", "1.6T 放量由需求还是良率主导？", "跟踪单通道 200G 良率、DSP 供给、客户认证、长协价与散单价", "45 分钟"],
       ["光芯片阅读包", "EML、硅光与薄膜铌酸锂的边界", "比较速率、距离、功耗、温度稳定性、成本与量产成熟度", "50 分钟"],
       ["算力资本开支", "云厂自由现金流能否支撑 AI 网络升级", "将 GPU、交换机、光模块、电力和园区网络放进同一资本回收模型", "60 分钟"],
+      ["债务链阅读包", "AI 基建融资成本如何传导到光模块订单", "CoreWeave 等新云信用利差 → GPU 采购 → 交换机端口 → 光模块与器件订单", "55 分钟"],
+      ["海外龙头阅读包", "Corning、Coherent、Lumentum 的交叉验证", "用海外公司的订单、产能、交期和毛利验证国内光通信高景气持续性", "45 分钟"],
+      ["估值阅读包", "高景气赛道如何区分产业趋势与交易赔率", "拆分收入斜率、份额、毛利、资本开支、客户集中和估值隐含增速", "40 分钟"],
+      ["设备阅读包", "先进制程与先进封装设备谁先兑现", "比较订单、收入确认、客户验收和国产替代的时间差", "50 分钟"],
     ],
   },
   interviews: {
@@ -519,6 +613,11 @@ const researchFeeds = {
       ["模块厂", "800G→1.6T 产品结构与产能利用率", "关注出货量以外的良率、毛利、客户集中度和资本开支", "公司交流 / B"],
       ["器件厂", "CW 激光器、FAU、MPO 与硅光封装需求", "验证 CPO/NPO 样品收入与批量收入的时间差", "供应链 / B"],
       ["海外龙头", "Coherent / Lumentum / Fabrinet 订单与供给", "关注激光器供给、制造外包、北美客户库存和交期", "IR / A"],
+      ["设备龙头", "ASML / AMAT / LRCX 订单与中国区收入", "区分先进逻辑、存储复苏和出口限制对订单的不同影响", "业绩会 / A"],
+      ["存储龙头", "SK hynix / Micron HBM 长协与扩产", "关注 HBM4 认证、传统 DRAM 价格、资本纪律与 TSV 良率", "业绩会 / A"],
+      ["交换芯片", "Broadcom / Marvell AI 网络与 CPO", "跟踪 51.2T→102.4T 代际、客户设计导入、DSP 与光引擎收入", "技术访谈 / A-B"],
+      ["国内公司", "中际旭创 / 新易盛 / 天孚通信机构交流", "原话与财报数字分开记录，重点核验客户、价格、良率和资本开支", "公司交流 / B"],
+      ["产业专家", "1.6T、LPO 与 CPO 的工程化约束", "把观点拆成可验证的链路距离、误码率、功耗、温度与维护成本", "专家访谈 / B-C"],
     ],
   },
 };
@@ -526,27 +625,69 @@ const researchFeeds = {
 function ResearchFeed({ type }) {
   const feed = researchFeeds[type];
   const [scope, setScope] = useState("全部");
+  const [saved, setSaved] = useState([]);
   const scopes = ["全部", ...new Set(feed.groups.map((item) => item[0]))];
+  const intros = {
+    papers: ["投资相关：硬件需求 / 推理效率", "厂商技术报告", "本周其余热度 TOP", "全部论文流"],
+    deepread: ["专题阅读包", "半导体·硬件供应链", "资本开支与债务链", "估值与证伪"],
+    interviews: ["本周值得看", "深度访谈", "投资视角", "公司业绩会"],
+  };
   return (
     <>
       <SectionTitle icon={type === "papers" ? "▤" : type === "deepread" ? "▦" : "▶"} title={feed.title} note={feed.note} />
+      <div className="section-path">{intros[type].map((item, index) => <span key={item}><b>{String(index + 1).padStart(2, "0")}</b>{item}</span>)}</div>
+      {type === "deepread" && <section className="digest"><div><b>专题阅读包：</b>带着核心问题按顺序读，读完把结论、证据和证伪条件沉淀进研究笔记。</div><small>建议路径：读前假设 → 核心证据 → 反方材料 → 公司映射 → 下一复核日。</small></section>}
+      {type === "papers" && <section className="digest"><div><b>投资筛选纪律：</b>优先呈现会改变算力需求结构、互连带宽、存储层级、功耗或制造良率的论文。</div><small>论文结论是技术证据，不直接等于商业化进度。</small></section>}
+      {type === "interviews" && <section className="digest"><div><b>本周值得看：</b>先看管理层和核心产业人物原话，再看观点型访谈。</div><small>A=公司原话；B=可交叉验证；C=专家观点，数字必须回一手。</small></section>}
       <div className="filter-row">{scopes.map((item) => <button key={item} className={scope === item ? "active" : ""} onClick={() => setScope(item)}>{item}</button>)}</div>
       <div className="research-list">
         {feed.groups.filter((item) => scope === "全部" || item[0] === scope).map(([tag, title, copy, source], index) => (
           <article key={title} data-search={`${tag} ${title} ${copy} ${source}`}>
             <span className="research-index">{String(index + 1).padStart(2, "0")}</span>
-            <div><span className="pill">{tag}</span><b>{title}</b><p>{copy}</p><small>{source} · ☆ 可收藏到精华沉淀</small></div>
+            <div><span className="pill">{tag}</span><b>{title}</b><p>{copy}</p><details><summary>展开研究框架</summary><p>核心问题：这项变化会影响需求、供给、价格、份额还是成本？下一验证点包括客户认证、订单、良率、量产时间和财务兑现。</p></details><small>{source} · 结论需按来源等级复核</small></div>
+            <button className={`research-save ${saved.includes(title) ? "saved" : ""}`} onClick={() => setSaved((current) => current.includes(title) ? current.filter((x) => x !== title) : [...current, title])} aria-label="收藏">{saved.includes(title) ? "★" : "☆"}</button>
           </article>
         ))}
       </div>
+      <div className="disclaimer">已收藏 {saved.length} 条 · 收藏用于本次浏览研究清单，不构成投资建议。</div>
     </>
   );
 }
 
 function DailyPage({ items, favorites, toggleFavorite, go }) {
+  const dailySources = {
+    "核心日报": [
+      ["AI 硬件链晨报", "CPO、1.6T、HBM 与先进封装的跨市场信号", "07-29 08:40"],
+      ["半导体设备材料日报", "晶圆厂资本开支、设备订单与国产验证", "07-29 08:36"],
+      ["海外科技业绩速递", "美股与全球科技公司业绩、指引和盘后反馈", "07-29 08:31"],
+    ],
+    "CPO / 光通信": [
+      ["光通信产业链日报", "800G/1.6T 出货、价格、良率、客户与供应链", "07-29 08:42"],
+      ["海外光器件跟踪", "Coherent、Lumentum、Corning、Fabrinet 交叉验证", "07-29 08:28"],
+      ["CPO 技术雷达", "102.4T、光引擎、CW 激光、FAU 与硅光封装", "07-29 08:20"],
+    ],
+    "存储 / HBM": [
+      ["存储价格日报", "DRAM、NAND、HBM 合约价与现货价差", "07-29 08:25"],
+      ["HBM 供应链跟踪", "认证、TSV 良率、扩产与长协覆盖", "07-29 08:18"],
+    ],
+    "设备 / 材料": [
+      ["晶圆厂设备日报", "订单、交付、验收和收入确认节奏", "07-29 08:34"],
+      ["国产替代验证表", "客户端验证、份额、复购与毛利变化", "07-29 08:15"],
+    ],
+  };
+  const [sourceGroup, setSourceGroup] = useState("核心日报");
+  const [sourceUpdated, setSourceUpdated] = useState("08:42");
   return (
     <>
-      <section className="digest"><div><b>📌 每日半导体日报：</b>CPO/光模块位于首页第一优先级；其次为 HBM、先进封装与晶圆设备。</div><small>结构：三条判断 → 重点事件 → 高频指标 → 观点分歧 → 下一验证点</small></section>
+      <SectionTitle icon="◉" title="每日半导体日报聚合台" note="多源合一 · 切换与刷新保持同一研究口径" action={<button className="text-btn" onClick={() => setSourceUpdated(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }))}>刷新 ↻</button>} />
+      <div className="daily-hub">
+        <nav>{Object.keys(dailySources).map((group) => <button key={group} className={sourceGroup === group ? "active" : ""} onClick={() => setSourceGroup(group)}>{group}<small>{dailySources[group].length} 源</small></button>)}</nav>
+        <section>
+          <div className="daily-hub-head"><b>{sourceGroup}</b><span>最后刷新 {sourceUpdated} · 无需登录</span></div>
+          {dailySources[sourceGroup].map(([name, desc, time]) => <article key={name} data-search={`${name} ${desc}`}><div><span className="live-dot" /><b>{name}</b><small>{time}</small></div><p>{desc}</p><em>打开本页摘要 →</em></article>)}
+        </section>
+      </div>
+      <section className="digest"><div><b>📌 今日导读：</b>CPO/光模块位于第一优先级；其次为 HBM、先进封装与晶圆设备。</div><small>阅读路径：1 分钟速览 → 10 分钟分页 → 1 小时 KOL 深读专题包</small></section>
       <SectionTitle icon="◉" title="今日三条投资判断" note="结论先行，并给出可证伪变量" />
       <div className="verdict-list">
         {[
@@ -751,6 +892,7 @@ export default function Page() {
   if (active === "home") content = <Home filteredEvents={filteredEvents} favorites={favorites} toggleFavorite={toggleFavorite} go={setActive} />;
   else if (active === "daily") content = <DailyPage items={filteredEvents} favorites={favorites} toggleFavorite={toggleFavorite} go={setActive} />;
   else if (active === "chain") content = <ChainPage />;
+  else if (active === "events") content = <ProductReleasePage />;
   else if (["papers","deepread","interviews"].includes(active)) content = <ResearchFeed type={active} />;
   else if (active === "hifreq") content = <HighFreqPage />;
   else if (active === "viewhub") content = <ViewHubPage />;
