@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vinext dev --hostname 0.0.0.0",
-    "build": "vinext build && node scripts/copy-hosting.mjs"
+    "build": "vinext build && node scripts/copy-hosting.mjs",
+    "build:pages": "vite build --config vite.static.config.js && node scripts/prepare-pages.mjs"
   },
   "dependencies": {
     "react": "19.2.8",

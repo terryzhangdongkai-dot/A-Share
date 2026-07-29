@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 const sourceLinks = {
   tsmc: "https://investor.tsmc.com/english/quarterly-results/2026/q2",
