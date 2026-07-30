@@ -810,20 +810,28 @@ a { color: inherit; }
 .market-live-status button { padding: 7px 11px; border: 1px solid #b9d7c0; border-radius: 9px; background: white; color: #24703b; cursor: pointer; font-weight: 800; }
 .market-live-status button:disabled { cursor: wait; opacity: .65; }
 .market-live-status.has-error { border-color: #efcf9f; background: #fff8ed; color: #9b5d13; }
-.atlas-tree { display: flex; min-width: 0; flex-direction: column; padding: 12px 10px; border-right: 1px solid var(--line); background: color-mix(in srgb, var(--paper) 90%, #dfeaff); }
+.atlas-tree { display: flex; min-width: 0; min-height: 0; height: 100%; overflow: hidden; flex-direction: column; padding: 12px 10px; border-right: 1px solid var(--line); background: color-mix(in srgb, var(--paper) 90%, #dfeaff); }
 .atlas-tree .atlas-search { min-width: 0; margin-bottom: 10px; background: white; }
-.atlas-tree-scroll { overflow-y: auto; padding-right: 4px; }
+.atlas-tree-scroll { min-height: 0; flex: 1; overflow-y: scroll; padding-right: 5px; scrollbar-gutter: stable; scrollbar-color: #8995a6 #e6eaf0; scrollbar-width: auto; }
+.atlas-tree-scroll::-webkit-scrollbar { width: 11px; }
+.atlas-tree-scroll::-webkit-scrollbar-track { border-radius: 9px; background: #e6eaf0; }
+.atlas-tree-scroll::-webkit-scrollbar-thumb { border: 2px solid #e6eaf0; border-radius: 9px; background: #8995a6; }
+.atlas-tree-scroll::-webkit-scrollbar-thumb:hover { background: #657386; }
 .atlas-tree section { margin-bottom: 15px; }
 .atlas-tree h3 { display: flex; gap: 7px; align-items: center; margin: 9px 7px; font-size: .76em; }
 .atlas-tree h3 i { width: 8px; height: 8px; border-radius: 3px; }
 .atlas-sector { border-radius: 9px; }
 .atlas-sector.selected { background: color-mix(in srgb, var(--accent) 8%, transparent); }
-.atlas-sector-head { display: grid; grid-template-columns: 14px 8px 1fr 37px 25px; gap: 7px; align-items: center; width: 100%; padding: 8px 7px; border: 0; color: var(--ink); background: transparent; cursor: pointer; text-align: left; }
+.atlas-sector-head { display: grid; grid-template-columns: 12px 8px minmax(58px, 1fr) 35px 25px 68px; gap: 5px; align-items: center; width: 100%; padding: 8px 5px; border: 0; color: var(--ink); background: transparent; cursor: pointer; text-align: left; }
 .atlas-sector-head > span { color: var(--muted); font-size: 8px; }
 .atlas-sector-head > i { width: 8px; height: 8px; border-radius: 50%; }
 .atlas-sector-head b { font-size: .75em; }
 .atlas-sector-head em { padding: 2px 4px; border-radius: 7px; color: #258343; background: #dff4e5; font-size: .54em; font-style: normal; font-weight: 850; text-align: center; }
 .atlas-sector-head small { padding: 2px 5px; border-radius: 10px; color: var(--muted); background: color-mix(in srgb, var(--line) 60%, transparent); font-size: .62em; text-align: center; }
+.sector-average { font-size: .61em; font-weight: 850; text-align: right; white-space: nowrap; }
+.sector-average.up { color: #dd4a4a; }
+.sector-average.down { color: #199a63; }
+.sector-average.flat { color: var(--muted); }
 .atlas-company-list { display: grid; padding: 3px 8px 8px 34px; }
 .atlas-company-list > .source-link { max-width: 100%; margin: 2px 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .atlas-company-list > button { display: flex; justify-content: space-between; padding: 5px 4px; border: 0; border-radius: 5px; color: var(--copy); background: transparent; cursor: pointer; font-size: .68em; text-align: left; }
@@ -1047,7 +1055,7 @@ a { color: inherit; }
   .daily-hub nav { display: flex; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
   .daily-hub nav button { min-width: 150px; }
   .atlas-workbench { display: block; height: auto; min-height: 0; overflow: visible; }
-  .atlas-tree { max-height: 430px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .atlas-tree { height: auto; max-height: 430px; border-right: 0; border-bottom: 1px solid var(--line); }
   .atlas-panel { overflow: visible; }
   .atlas-panel-head { top: 54px; }
   .onepager-metrics { grid-template-columns: repeat(2, 1fr); }

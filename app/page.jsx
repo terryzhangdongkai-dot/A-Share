@@ -36,6 +36,9 @@ const sourceLinks = {
   cninfo: "https://www.cninfo.com.cn/new/index",
   innolightIr: "https://www.zj-innolight.com/index/index/inv1.html",
   infineon: "https://www.infineon.com/about/investor/reports-and-presentations",
+  microsoftQ4: "https://www.microsoft.com/en-us/Investor/earnings/FY-2026-Q4/press-release-webcast",
+  metaQ2: "https://investor.atmeta.com/investor-news/press-release-details/2026/Meta-Reports-Second-Quarter-2026-Results/default.aspx",
+  qualcommQ3: "https://investor.qualcomm.com/financial-information",
 };
 
 const navGroups = [
@@ -84,6 +87,45 @@ const navGroups = [
 ];
 
 const events = [
+  {
+    id: 12,
+    date: "07-30",
+    grade: "A",
+    importance: 3,
+    category: "云厂资本开支",
+    company: "Microsoft",
+    title: "FY26 Q4 营收 900 亿美元，Azure 增长 43%，商业剩余履约义务增长 84%",
+    summary: "Microsoft Cloud 收入达到 593 亿美元、同比增长 27%；Azure 年收入首次超过 1000 亿美元，AI 与云需求继续支撑数据中心基础设施投入。",
+    takeaway: "对半导体链的直接验证点是 GPU/ASIC 服务器、交换网络、光互连、电源与液冷需求；后续需继续核对资本开支、折旧和供给约束。",
+    source: "Microsoft FY26 Q4 官方业绩",
+    url: sourceLinks.microsoftQ4,
+  },
+  {
+    id: 11,
+    date: "07-30",
+    grade: "A",
+    importance: 3,
+    category: "云厂资本开支",
+    company: "Meta",
+    title: "Meta 发布 2026 年二季度业绩，AI 基础设施投入仍是供应链核心变量",
+    summary: "二季度收入约 608 亿美元、同比增长 28%；广告业务继续为 AI 算力、数据中心和网络建设提供现金流支持。",
+    takeaway: "市场需要同步观察全年资本开支区间、训练与推理算力结构，以及光模块、交换机和数据中心配套设备的订单兑现。",
+    source: "Meta Q2 2026 官方业绩",
+    url: sourceLinks.metaQ2,
+  },
+  {
+    id: 10,
+    date: "07-30",
+    grade: "A",
+    importance: 2,
+    category: "AI 芯片",
+    company: "Qualcomm",
+    title: "Qualcomm 发布 FY26 Q3 业绩，手机链压力与数据中心多元化并行",
+    summary: "公司季度业绩已在官方投资者关系页面发布；短期关注手机客户结构与存储供给约束，中期关注 Dragonfly 数据中心路线及非手机业务占比。",
+    takeaway: "对产业链而言，手机 SoC 需求与先进制程投片仍需谨慎，数据中心 CPU/AI 芯片则提供新的先进封装、互连和服务器增量观察点。",
+    source: "Qualcomm Investor Relations",
+    url: sourceLinks.qualcommQ3,
+  },
   {
     id: 1,
     date: "07-29",
@@ -259,6 +301,15 @@ const formatMultiple = (value, lossLabel = "亏损 / 不适用") =>
 
 const formatShares = (quote) =>
   quote?.totalShares ? `${(quote.totalShares / 1e8).toLocaleString("zh-CN", { maximumFractionDigits: 2 })}亿股` : "暂无公开数据";
+const sectorAverageChange = (sector, quotes) => {
+  const changes = sector.companies
+    .map((company) => company.code ? quotes[company.code]?.changePercent : null)
+    .filter((value) => typeof value === "number" && Number.isFinite(value));
+  if (!changes.length) return null;
+  return changes.reduce((sum, value) => sum + value, 0) / changes.length;
+};
+const formatAverageChange = (value) =>
+  value == null ? "均幅 —" : `均幅 ${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
 
 const MARKET_POLL_INTERVAL = 60_000;
 const marketSecid = (code) => {
@@ -636,6 +687,7 @@ function ChainPage() {
                 <h3 style={{ color: stream.color }}><i style={{ background: stream.color }} />{stream.name}</h3>
                 {stream.sectors.filter(matchesTree).map((sector) => {
                   const open = openNames.includes(sector.name) || Boolean(treeQuery);
+                  const averageChange = sectorAverageChange(sector, liveMarketData);
                   return <div className={`atlas-sector ${selected.name === sector.name ? "selected" : ""}`} key={sector.name}>
                     <button className="atlas-sector-head" onClick={() => {
                       setSelectedName(sector.name);
@@ -646,7 +698,7 @@ function ChainPage() {
                       setActiveBoardTag("全部");
                       setOpenNames((current) => current.includes(sector.name) ? current.filter((name) => name !== sector.name) : [...current, sector.name]);
                     }}>
-                      <span>{open ? "▼" : "▶"}</span><i style={{ background: stream.color }} /><b>{sector.name}</b><em>LIVE</em><small>{sector.companies.length}</small>
+                      <span>{open ? "▼" : "▶"}</span><i style={{ background: stream.color }} /><b>{sector.name}</b><em>LIVE</em><small>{sector.companies.length}</small><strong className={`sector-average ${averageChange > 0 ? "up" : averageChange < 0 ? "down" : "flat"}`} title={`${sector.name}成分股涨跌幅算术平均；已取得 ${sector.companies.filter((company) => company.code && liveMarketData[company.code]?.changePercent != null).length}/${sector.companies.length} 只行情`}>{formatAverageChange(averageChange)}</strong>
                     </button>
                     {open && <div className="atlas-company-list">
                       <SourceLink href={sector.source} label="该板块原始网站" compact />
@@ -977,11 +1029,14 @@ function ResearchFeed({ type }) {
 function DailyPage({ items, favorites, toggleFavorite, go }) {
   const dailySources = {
     "核心日报": [
+      ["07-30 海外科技业绩速递", "Microsoft Azure 增长 43%，Meta AI 基础设施投入与 Qualcomm 多元化路线成为今天新增验证信号", "07-30 08:20", sourceLinks.microsoftQ4],
+      ["07-30 云厂算力需求核验", "云收入、剩余履约义务与资本开支共同验证 GPU/ASIC、光互连、电源和液冷需求", "07-30 08:18", sourceLinks.metaQ2],
       ["AI 硬件链晨报", "CPO、1.6T、HBM 与先进封装的跨市场信号", "07-29 08:40", sourceLinks.broadcomCpo],
       ["半导体设备材料日报", "晶圆厂资本开支、设备订单与国产验证", "07-29 08:36", sourceLinks.semi],
       ["海外科技业绩速递", "美股与全球科技公司业绩、指引和盘后反馈", "07-29 08:31", sourceLinks.sec],
     ],
     "CPO / 光通信": [
+      ["07-30 云厂光互连读数", "Microsoft Azure 与 Meta AI 投入继续验证 scale-out 网络、交换机和高速光连接需求", "07-30 08:16", sourceLinks.microsoftQ4],
       ["光通信产业链日报", "800G/1.6T 出货、价格、良率、客户与供应链", "07-29 08:42", sourceLinks.eoptolink16t],
       ["海外光器件跟踪", "Coherent、Lumentum、Corning、Fabrinet 交叉验证", "07-29 08:28", sourceLinks.coherent],
       ["CPO 技术雷达", "102.4T、光引擎、CW 激光、FAU 与硅光封装", "07-29 08:20", sourceLinks.broadcomCpo],
@@ -996,7 +1051,7 @@ function DailyPage({ items, favorites, toggleFavorite, go }) {
     ],
   };
   const [sourceGroup, setSourceGroup] = useState("核心日报");
-  const [sourceUpdated, setSourceUpdated] = useState("08:42");
+  const [sourceUpdated, setSourceUpdated] = useState(MARKET_DATA_GENERATED_AT.slice(5, 16));
   return (
     <>
       <SectionTitle icon="◉" title="每日半导体日报聚合台" note="多源合一 · 切换与刷新保持同一研究口径" action={<button className="text-btn" onClick={() => setSourceUpdated(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }))}>刷新 ↻</button>} />

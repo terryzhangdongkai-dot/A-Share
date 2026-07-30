@@ -45,7 +45,7 @@ const requests = companies.map((company) => ({ company, ...marketInfo(company.co
 const rows = [];
 for (let offset = 0; offset < requests.length; offset += 70) {
   const batch = requests.slice(offset, offset + 70);
-  const url = new URL("https://push2.eastmoney.com/api/qt/ulist.np/get");
+  const url = new URL("https://push2delay.eastmoney.com/api/qt/ulist.np/get");
   url.searchParams.set("fltt", "2");
   url.searchParams.set("secids", batch.map((item) => item.secid).join(","));
   url.searchParams.set("fields", "f2,f3,f9,f12,f14,f20,f23,f124");

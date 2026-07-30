@@ -32,6 +32,16 @@ let browser;
   console.log("checkpoint: chain");
   await page.getByText("东方财富准实时行情已连接").waitFor();
   assert(marketResponses === 4, `首次批量行情请求应为 4 次，实际 ${marketResponses}`);
+  const treeScroll = await page.locator(".atlas-tree-scroll").evaluate((element) => ({
+    clientHeight: element.clientHeight,
+    scrollHeight: element.scrollHeight,
+    overflowY: getComputedStyle(element).overflowY,
+  }));
+  assert(treeScroll.scrollHeight > treeScroll.clientHeight, "产业链左栏内容未形成独立滚动区域");
+  assert(treeScroll.overflowY === "scroll", `产业链左栏滚动条未强制显示：${treeScroll.overflowY}`);
+  const waferAverage = page.locator(".atlas-sector-head").filter({ hasText: "硅片" }).first().locator(".sector-average");
+  assert(await waferAverage.getAttribute("title").then((text) => text.includes("6/6 只行情")), "硅片板块平均涨跌幅未覆盖 6/6 只股票");
+  assert(/^均幅 [+-]\d+\.\d{2}%$/.test(await waferAverage.innerText()), "硅片板块平均涨跌幅格式错误");
   await page.getByRole("button", { name: "立即刷新" }).click();
   await page.getByText("东方财富准实时行情已连接").waitFor();
   assert(marketResponses === 8, `手动刷新后累计行情请求应为 8 次，实际 ${marketResponses}`);
@@ -57,6 +67,10 @@ let browser;
   assert((await page.locator(".calendar-board tbody tr .source-link").count()) >= 35, "业绩日历缺少原始来源");
   assert((await page.locator(".earnings-details > details[open]").count()) >= 17, "最新已披露业绩未展开");
 
+  await page.getByRole("button", { name: /每日半导体日报聚合/ }).click();
+  assert(await page.getByText(/FY26 Q4 营收 900 亿美元/).first().isVisible(), "今天新增的 Microsoft 动态未进入每日更新");
+  assert(await page.getByText(/Meta 发布 2026 年二季度业绩/).first().isVisible(), "今天新增的 Meta 动态未进入每日更新");
+
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForSelector(".app");
@@ -70,6 +84,7 @@ let browser;
     marketResponses,
     sourceBoards: 15,
     earningsCompanies: 35,
+    treeScroll,
     bodyWidth,
     errors,
   }));
