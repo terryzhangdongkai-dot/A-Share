@@ -4,7 +4,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import { chainAtlasCompanyCount, chainAtlasSectors, chainAtlasStreams, chainAtlasUpdates } from "./chainAtlasData";
 import { earningsCompanies, earningsPhases } from "./earningsData";
 import { marketData, MARKET_DATA_COVERAGE, MARKET_DATA_GENERATED_AT } from "./marketData";
+import { dailyMarketArchive, MARKET_HISTORY_GENERATED_AT } from "./marketHistoryData";
 import { sourceMonitorData, SOURCE_MONITOR_GENERATED_AT } from "./sourceMonitorData";
+import { dailyNewsArchive } from "./dailyNewsData";
+import { sectorLogic, featuredSectorNames } from "./sectorLogicData";
+import { knowledgeCategories, knowledgeTerms } from "./knowledgeData";
+import chainEducationImage from "../static/assets/semiconductor-chain-education.png";
 
 const sourceLinks = {
   tsmc: "https://investor.tsmc.com/english/quarterly-results/2026/q2",
@@ -39,6 +44,12 @@ const sourceLinks = {
   microsoftQ4: "https://www.microsoft.com/en-us/Investor/earnings/FY-2026-Q4/press-release-webcast",
   metaQ2: "https://investor.atmeta.com/investor-news/press-release-details/2026/Meta-Reports-Second-Quarter-2026-Results/default.aspx",
   qualcommQ3: "https://investor.qualcomm.com/financial-information",
+  samsungQ2: "https://www.samsung.com/global/ir/financial-information/earnings-release/",
+  klaQ4: "https://ir.kla.com/news-events/press-releases/detail/518/kla-corporation-reports-fiscal-2026-fourth-quarter-and-full",
+  nxpQ2: "https://investors.nxp.com/news-releases/news-release-details/nxp-semiconductors-reports-second-quarter-2026-results",
+  armQ1: "https://investors.arm.com/financials/quarterly-annual-results",
+  amphenolQ2: "https://investors.amphenol.com/news-and-events/events/event-details/2026/2nd-Quarter-2026-Earnings-2026-vSdZ9Zxy8Q/default.aspx",
+  eastmoneyMarket: "https://quote.eastmoney.com/center/",
 };
 
 const navGroups = [
@@ -78,15 +89,93 @@ const navGroups = [
     label: "专题沉淀",
     items: [
       { id: "watch", icon: "☆", label: "精华沉淀 / 收藏", count: "" },
-      { id: "knowledge", icon: "◎", label: "知识解读", count: "" },
-      { id: "earnings", icon: "▦", label: "业绩前瞻日历", count: "35" },
+      { id: "knowledge", icon: "◎", label: "知识解读", count: String(knowledgeTerms.length) },
+      { id: "earnings", icon: "▦", label: "业绩前瞻日历", count: String(earningsCompanies.length) },
       { id: "xpu", icon: "⌬", label: "XPU 芯片光谱", count: "" },
       { id: "sources", icon: "↗", label: "来源与口径", count: "" },
     ],
   },
 ];
 
-const events = [
+const legacyEvents = [
+  {
+    id: 18,
+    date: "07-30",
+    grade: "A",
+    importance: 3,
+    category: "A股盘后",
+    company: "半导体产业链",
+    title: "7 月 30 日半导体样本普遍回调：硅片均幅 -10.67%，光通信均幅 -9.92%",
+    summary: "按本站 266 个可识别证券的收盘涨跌幅做板块内算术平均：云计算 -0.21%、存储 -1.29% 相对抗跌；硅片 -10.67%、AI 设备 -10.52%、光通信 -9.92%、封测 -9.65% 跌幅居前。",
+    takeaway: "今日属于高波动与拥挤度快速释放，盘后研究应优先区分基本面变化与估值/交易结构冲击；下一步核验成交额、龙头相对强弱、次日修复和业绩兑现。",
+    source: "东方财富收盘行情 · 本站算术平均",
+    url: sourceLinks.eastmoneyMarket,
+  },
+  {
+    id: 17,
+    date: "07-30",
+    grade: "A",
+    importance: 3,
+    category: "存储 / 晶圆代工",
+    company: "Samsung Electronics",
+    title: "Samsung 发布 2026 年二季度业绩材料，存储、HBM 与先进代工进入新一轮验证窗口",
+    summary: "公司二季度业绩入口已上线；此前预告合并销售约 171 万亿韩元、营业利润约 89.4 万亿韩元，市场关注 HBM4、服务器内存、2nm 与先进封装的增量贡献。",
+    takeaway: "存储高景气需要继续由 HBM 产品结构、传统 DRAM/NAND 价格及资本开支共同验证；代工端重点观察 2nm 客户爬坡和良率。",
+    source: "Samsung Electronics Investor Relations",
+    url: sourceLinks.samsungQ2,
+  },
+  {
+    id: 16,
+    date: "07-30",
+    grade: "A",
+    importance: 3,
+    category: "半导体设备",
+    company: "KLA",
+    title: "KLA FY26 Q4 营收 36.6 亿美元，下一季指引中值升至 40 亿美元",
+    summary: "季度收入高于指引中值；公司判断先进逻辑、存储复杂度与先进封装正在共同提高过程控制和量检测需求。",
+    takeaway: "设备链景气不只来自新增晶圆产能，制程复杂度提升也会增加单位产能的量检测强度；需跟踪订单、交付与客户资本开支兑现。",
+    source: "KLA Investor Relations",
+    url: sourceLinks.klaQ4,
+  },
+  {
+    id: 15,
+    date: "07-30",
+    grade: "A",
+    importance: 2,
+    category: "汽车芯片 / 边缘 AI",
+    company: "NXP",
+    title: "NXP Q2 营收 35.0 亿美元、同比增长 19%，三季度指引中值 37.5 亿美元",
+    summary: "汽车、工业与 IoT 等终端实现广泛改善，公司把软件定义汽车、Physical AI 和数据中心列为增长引擎。",
+    takeaway: "成熟制程复苏开始出现公司级证据，但仍应区分库存补库与终端真实增长；重点观察汽车订单、工业需求和毛利率持续性。",
+    source: "NXP Investor Relations",
+    url: sourceLinks.nxpQ2,
+  },
+  {
+    id: 14,
+    date: "07-30",
+    grade: "A",
+    importance: 2,
+    category: "CPU / IP",
+    company: "Arm",
+    title: "Arm FY27 Q1 业绩材料上线，云端 CPU、DPU/SmartNIC 与边缘 AI 仍是核心跟踪方向",
+    summary: "公司已举行 FY27 Q1 业绩会；研究重点从手机授权收入进一步扩展至云服务器 CPU、网络处理器和 Arm AGI CPU 的客户与供给兑现。",
+    takeaway: "Arm 架构在 AI 数据中心的渗透将影响 CPU、先进制程、Chiplet、内存带宽和网络芯片需求，但需按量产收入而非合作声明验证。",
+    source: "Arm Investor Relations",
+    url: sourceLinks.armQ1,
+  },
+  {
+    id: 13,
+    date: "07-30",
+    grade: "A",
+    importance: 2,
+    category: "CPO / 连接器",
+    company: "Amphenol",
+    title: "Amphenol 举行 2026 年二季度业绩会，高速连接与 AI 数据中心需求进入财务验证",
+    summary: "连接器龙头二季度业绩会已举行；对 CPO/光模块链的关键读数是通信解决方案、服务器连接、铜缆与光纤互连的订单和利润率。",
+    takeaway: "AI 互连价值量并非只在光模块，背板、高速铜缆、连接器和光纤组件同样受益；需比较收入增速与库存、并购贡献和有机增长。",
+    source: "Amphenol Investor Relations",
+    url: sourceLinks.amphenolQ2,
+  },
   {
     id: 12,
     date: "07-30",
@@ -244,6 +333,40 @@ const events = [
     url: sourceLinks.corning,
   },
 ];
+
+const archiveMarketEvents = dailyMarketArchive
+  .filter((day) => day.date > "2026-07-30")
+  .map((day, index) => ({
+    id: 2000 + index,
+    date: day.date.slice(5),
+    grade: "A",
+    importance: 3,
+    category: "A股盘后",
+    company: "半导体产业链",
+    title: `${day.date.slice(5)} 产业链算术平均 ${day.averageChange > 0 ? "+" : ""}${day.averageChange.toFixed(2)}%，${day.rising}/${day.coverage} 家上涨`,
+    summary: `领涨：${day.leaders.slice(0, 3).map((row) => `${row.sector} ${row.averageChange > 0 ? "+" : ""}${row.averageChange.toFixed(2)}%`).join("、")}；相对落后：${day.laggards.slice(0, 3).map((row) => `${row.sector} ${row.averageChange > 0 ? "+" : ""}${row.averageChange.toFixed(2)}%`).join("、")}。`,
+    takeaway: "板块数据为现有成分股简单算术平均，用于观察行情广度；不代表市值加权指数，也不能替代公司基本面。",
+    source: "东方财富历史收盘行情 · 本站算术平均",
+    url: sourceLinks.eastmoneyMarket,
+  }));
+
+const archiveResearchEvents = dailyNewsArchive
+  .filter((day) => day.date > "2026-07-30")
+  .flatMap((day, dayIndex) => day.items.map((item, itemIndex) => ({
+    id: 3000 + dayIndex * 20 + itemIndex,
+    date: day.date.slice(5),
+    grade: "A",
+    importance: item.category.includes("前瞻") || item.category.includes("CPO") ? 3 : 2,
+    category: item.category,
+    company: item.company,
+    title: item.title,
+    summary: item.takeaway,
+    takeaway: day.focus,
+    source: item.source,
+    url: item.url,
+  })));
+
+const events = [...archiveResearchEvents, ...archiveMarketEvents, ...legacyEvents];
 
 const companies = [
   { rank: 1, name: "中际旭创", segment: "光模块", score: 94, trend: "+5", signal: "1.6T 验证", color: "#2674ff", source: sourceLinks.innolightIr },
@@ -630,6 +753,7 @@ function ChainPage() {
     };
   }, []);
   const selected = chainAtlasSectors.find((item) => item.name === selectedName) || defaultSector;
+  const selectedLogic = sectorLogic[selected.name];
   const [positioning, variables] = sectorResearch[selected.name] || [`${selected.name}产业链重点公司集合`, "订单 · 价格 · 份额 · 良率 · 资本开支"];
   const matchesTree = (sector) => !treeQuery || `${sector.name} ${sector.companies.map((company) => `${company.name} ${company.code}`).join(" ")}`.toLowerCase().includes(treeQuery.toLowerCase());
   const sourceGroupSectors = chainAtlasSectors.filter((sector) => sector.source === selected.source);
@@ -750,6 +874,20 @@ function ChainPage() {
               <b>事实由原始站点整理 · AI 摘要必须回源核验 · 点击公司查看完整研究卡片</b>
               <div><span>行情更新时间：{selectedQuote?.updatedAt || MARKET_DATA_GENERATED_AT}</span><span>研究来源：{new URL(selected.source).hostname}</span><span>行情来源：东方财富行情中心</span></div>
             </div>
+            {selectedLogic && <section className={`sector-explainer ${featuredSectorNames.includes(selected.name) ? "featured" : ""}`} data-search={`${selected.name} ${selectedLogic.plain} ${selectedLogic.flow.join(" ")} ${selectedLogic.metrics.join(" ")}`}>
+              {featuredSectorNames.includes(selected.name) && <figure className="sector-education-figure"><img src={chainEducationImage} alt="电子布、HBM存储与光通信CPO产业链科学示意图" /><figcaption><span>电子布 → 高速覆铜板</span><span>HBM → GPU先进封装</span><span>光芯片 → 1.6T/CPO</span></figcaption></figure>}
+              <header><div><small>INDUSTRY LOGIC · 行业逻辑拆解</small><h2>{selected.name}：从上游投入到下游需求</h2><p>{selectedLogic.plain}</p></div><SourceLink href={selectedLogic.source || selected.source} label="行业技术原始网站" /></header>
+              <div className="sector-flow">{selectedLogic.flow.map((step, index) => <React.Fragment key={step}><article><span>{String(index + 1).padStart(2, "0")}</span><b>{step}</b></article>{index < selectedLogic.flow.length - 1 && <i>→</i>}</React.Fragment>)}</div>
+              <div className="sector-logic-grid">
+                <article><small>商业角色</small><b>{selectedLogic.role}</b></article>
+                <article><small>怎么赚钱</small><b>{selectedLogic.money}</b></article>
+                <article><small>核心指标</small><div>{selectedLogic.metrics.map((item) => <span key={item}>{item}</span>)}</div></article>
+                <article><small>催化剂</small><ul>{selectedLogic.catalysts.map((item) => <li key={item}>{item}</li>)}</ul></article>
+                <article><small>风险 / 证伪</small><ul>{selectedLogic.risks.map((item) => <li key={item}>{item}</li>)}</ul></article>
+                {selectedLogic.leaders && <article><small>公司角色辨析</small><b>{selectedLogic.leaders}</b></article>}
+              </div>
+              <p className="sector-method-note">研究顺序：先确认公司属于哪一环 → 再核验该业务收入占比 → 最后看价格、份额、良率与现金流；概念映射不能替代公司公告。</p>
+            </section>}
             {!selectedCompany && <>
               <div className="atlas-panel-tools">
                 <label>⌕ <input value={panelQuery} onChange={(event) => setPanelQuery(event.target.value)} placeholder="搜索公司名 / 代码 / 定位关键词（如 800G）" /></label>
@@ -948,6 +1086,9 @@ const researchFeeds = {
     title: "机构与 KOL 深读",
     note: "专题阅读包：先读核心问题，再看证据与证伪变量",
     groups: [
+      ["云厂业绩包", "Microsoft、Meta 与 Amazon 的 AI capex 是否可持续？", "对比云收入、RPO、资本开支、折旧与自由现金流，再映射 GPU、光互连、电源和液冷", "08-11 更新"],
+      ["GPU业绩包", "AMD Q2 数据中心收入翻倍后，增长由 CPU 还是 GPU 驱动？", "拆分 EPYC、Instinct、系统客户、供给与 Q3 指引，避免把分部增长全部归因于 AI GPU", "08-11 更新"],
+      ["NAND业绩包", "Sandisk 的 NAND 价格、长协与 eSSD 能否形成持续盈利？", "跟踪 ASP、位元出货、数据中心收入、库存、BiCS 节点和资本纪律", "08-11 更新"],
       ["CPO 阅读包", "CPO 会替代多少可插拔光模块？", "按交换机代际、光口位置、激光器架构与维护成本拆分，不采用‘全部替代’线性假设", "60 分钟"],
       ["1.6T 阅读包", "1.6T 放量由需求还是良率主导？", "跟踪单通道 200G 良率、DSP 供给、客户认证、长协价与散单价", "45 分钟"],
       ["光芯片阅读包", "EML、硅光与薄膜铌酸锂的边界", "比较速率、距离、功耗、温度稳定性、成本与量产成熟度", "50 分钟"],
@@ -962,6 +1103,9 @@ const researchFeeds = {
     title: "访谈与业绩会",
     note: "管理层原话优先；每条配置下一验证点",
     groups: [
+      ["光器件业绩会", "Lumentum FY26 Q4：CW 激光、高速器件供给与毛利", "08-11 美股盘后重点核验云与网络收入、产能、客户集中和下一季指引", "08-11 / A"],
+      ["AI芯片业绩会", "AMD FY26 Q2：数据中心 GPU/CPU 与系统级路线", "收入 115 亿美元、数据中心 67 亿美元；继续核验 MI450/Helios、客户与毛利率", "08-04 / A"],
+      ["存储业绩会", "Sandisk FY26 Q4：NAND、eSSD 与长协模式", "把价格周期、产品结构和新商业模式分开记录", "08-05 / A"],
       ["云厂", "AI 集群网络架构与 1.6T 采购节奏", "关注交换机端口速率、网络拓扑、双供应商策略和年度降价", "T1 / A-B"],
       ["模块厂", "800G→1.6T 产品结构与产能利用率", "关注出货量以外的良率、毛利、客户集中度和资本开支", "公司交流 / B"],
       ["器件厂", "CW 激光器、FAU、MPO 与硅光封装需求", "验证 CPO/NPO 样品收入与批量收入的时间差", "供应链 / B"],
@@ -976,6 +1120,10 @@ const researchFeeds = {
 };
 
 function researchSourceFor(type, tag, title) {
+  if (title.includes("AMD")) return "https://ir.amd.com/news-events/press-releases/detail/1295/amd-reports-second-quarter-2026-financial-results";
+  if (title.includes("Amazon") || title.includes("云厂业绩")) return "https://www.aboutamazon.com/news/company-news/amazon-earnings-q2-2026-report";
+  if (title.includes("Sandisk")) return "https://investor.sandisk.com/news-events/news-releases";
+  if (title.includes("Lumentum")) return sourceLinks.lumentum;
   if (title.includes("Broadcom")) return sourceLinks.broadcomCpo;
   if (title.includes("NVIDIA") || title.includes("Rubin")) return sourceLinks.nvidia;
   if (title.includes("Coherent")) return sourceLinks.coherent;
@@ -1027,8 +1175,13 @@ function ResearchFeed({ type }) {
 }
 
 function DailyPage({ items, favorites, toggleFavorite, go }) {
+  const [archiveDate, setArchiveDate] = useState(dailyNewsArchive[0].date);
+  const archive = dailyNewsArchive.find((item) => item.date === archiveDate) || dailyNewsArchive[0];
+  const marketDay = dailyMarketArchive.find((item) => item.date === archive.date);
   const dailySources = {
     "核心日报": [
+      ["07-30 A股半导体盘后", "266 个证券收盘快照显示板块普遍回调：云计算和存储相对抗跌，硅片、AI 设备、光通信与封测跌幅居前", "07-30 17:30", sourceLinks.eastmoneyMarket],
+      ["07-30 半导体业绩全景", "Samsung、KLA、NXP、Arm 与 Amphenol 最新披露共同覆盖存储、设备、汽车芯片、CPU IP 和高速连接", "07-30 08:40", sourceLinks.samsungQ2],
       ["07-30 海外科技业绩速递", "Microsoft Azure 增长 43%，Meta AI 基础设施投入与 Qualcomm 多元化路线成为今天新增验证信号", "07-30 08:20", sourceLinks.microsoftQ4],
       ["07-30 云厂算力需求核验", "云收入、剩余履约义务与资本开支共同验证 GPU/ASIC、光互连、电源和液冷需求", "07-30 08:18", sourceLinks.metaQ2],
       ["AI 硬件链晨报", "CPO、1.6T、HBM 与先进封装的跨市场信号", "07-29 08:40", sourceLinks.broadcomCpo],
@@ -1036,16 +1189,19 @@ function DailyPage({ items, favorites, toggleFavorite, go }) {
       ["海外科技业绩速递", "美股与全球科技公司业绩、指引和盘后反馈", "07-29 08:31", sourceLinks.sec],
     ],
     "CPO / 光通信": [
+      ["07-30 高速连接财务验证", "Amphenol 二季度业绩会为高速连接器、服务器互连、铜缆与光纤组件提供新增财务读数", "07-30 08:36", sourceLinks.amphenolQ2],
       ["07-30 云厂光互连读数", "Microsoft Azure 与 Meta AI 投入继续验证 scale-out 网络、交换机和高速光连接需求", "07-30 08:16", sourceLinks.microsoftQ4],
       ["光通信产业链日报", "800G/1.6T 出货、价格、良率、客户与供应链", "07-29 08:42", sourceLinks.eoptolink16t],
       ["海外光器件跟踪", "Coherent、Lumentum、Corning、Fabrinet 交叉验证", "07-29 08:28", sourceLinks.coherent],
       ["CPO 技术雷达", "102.4T、光引擎、CW 激光、FAU 与硅光封装", "07-29 08:20", sourceLinks.broadcomCpo],
     ],
     "存储 / HBM": [
+      ["07-30 Samsung 存储跟踪", "二季度业绩材料重点核验 HBM4、服务器 DRAM/NAND、先进封装与存储资本开支", "07-30 08:34", sourceLinks.samsungQ2],
       ["存储价格日报", "DRAM、NAND、HBM 合约价与现货价差", "07-29 08:25", sourceLinks.micron],
       ["HBM 供应链跟踪", "认证、TSV 良率、扩产与长协覆盖", "07-29 08:18", sourceLinks.skHbm4],
     ],
     "设备 / 材料": [
+      ["07-30 过程控制景气验证", "KLA 最新收入与下一季指引验证先进逻辑、存储和先进封装带来的量检测强度提升", "07-30 08:32", sourceLinks.klaQ4],
       ["晶圆厂设备日报", "订单、交付、验收和收入确认节奏", "07-29 08:34", sourceLinks.asml],
       ["国产替代验证表", "客户端验证、份额、复购与毛利变化", "07-29 08:15", sourceLinks.cninfo],
     ],
@@ -1054,7 +1210,23 @@ function DailyPage({ items, favorites, toggleFavorite, go }) {
   const [sourceUpdated, setSourceUpdated] = useState(MARKET_DATA_GENERATED_AT.slice(5, 16));
   return (
     <>
-      <SectionTitle icon="◉" title="每日半导体日报聚合台" note="多源合一 · 切换与刷新保持同一研究口径" action={<button className="text-btn" onClick={() => setSourceUpdated(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }))}>刷新 ↻</button>} />
+      <SectionTitle icon="◉" title="每日半导体日报聚合台" note="07-29 至今逐日归档 · 历史内容完整保留 · 行情按成分股算术平均" action={<button className="text-btn" onClick={() => setSourceUpdated(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }))}>刷新 ↻</button>} />
+      <section className="archive-date-strip" aria-label="日报日期切换">
+        {dailyNewsArchive.map((day) => <button key={day.date} className={archive.date === day.date ? "active" : ""} onClick={() => setArchiveDate(day.date)}><b>{day.date.slice(5).replace("-", ".")}</b><small>{day.label.split(" · ")[0]}</small></button>)}
+      </section>
+      <section className="daily-archive-hero">
+        <header><div><span>{archive.state}</span><small>{archive.date} · 北京时间</small><h1>{archive.headline}</h1><p>{archive.summary}</p></div><div className={`daily-market-badge ${marketDay?.averageChange > 0 ? "up" : marketDay?.averageChange < 0 ? "down" : "flat"}`}><small>本站产业链算术平均</small><b>{marketDay ? `${marketDay.averageChange > 0 ? "+" : ""}${marketDay.averageChange.toFixed(2)}%` : "盘前 / 休市"}</b><em>{marketDay ? `${marketDay.rising} 涨 / ${marketDay.falling} 跌 / ${marketDay.coverage} 样本` : "等待有效收盘行情"}</em></div></header>
+        <div className="daily-focus"><b>今日研究焦点</b><p>{archive.focus}</p><small>行情归档核验 {MARKET_HISTORY_GENERATED_AT} · 仅作研究记录，不构成投资建议</small></div>
+        {marketDay && <div className="daily-sector-rank">
+          <div><b>领涨行业</b>{marketDay.leaders.map((row) => <article key={row.sector}><span>{row.sector}</span><i><em style={{ width: `${Math.min(100, Math.max(6, Math.abs(row.averageChange) * 8))}%` }} /></i><strong className={row.averageChange >= 0 ? "up" : "down"}>{row.averageChange > 0 ? "+" : ""}{row.averageChange.toFixed(2)}%</strong></article>)}</div>
+          <div><b>相对落后</b>{marketDay.laggards.map((row) => <article key={row.sector}><span>{row.sector}</span><i><em style={{ width: `${Math.min(100, Math.max(6, Math.abs(row.averageChange) * 8))}%` }} /></i><strong className={row.averageChange >= 0 ? "up" : "down"}>{row.averageChange > 0 ? "+" : ""}{row.averageChange.toFixed(2)}%</strong></article>)}</div>
+        </div>}
+      </section>
+      <SectionTitle icon="⌁" title={`${archive.date.slice(5).replace("-", "月")}日新增资讯与业绩事件`} note="每条均附公司或机构原始网站 · AI 结论与原始事实分开" />
+      <div className="archive-news-grid">
+        {archive.items.map((item) => <article key={`${archive.date}-${item.company}-${item.title}`} data-search={`${archive.date} ${item.category} ${item.company} ${item.title} ${item.takeaway}`}><header><span>{item.category}</span><small>{archive.date}</small></header><h3>{item.company} · {item.title}</h3><p><b>AI 投资解读：</b>{item.takeaway}</p><footer><em>{item.source}</em><SourceLink href={item.url} label="原始网站" compact /></footer></article>)}
+      </div>
+      <details className="archive-method"><summary>数据口径与日期说明</summary><p>个股每日涨跌幅来自东方财富历史收盘行情；行业涨跌幅为本站现有行业成分股的简单算术平均，不做市值加权。周末和盘前没有新的有效收盘价，因此只归档研究事件。尚未由公司官网发布的业绩数字保持“待公布”，不会用媒体预测冒充实际值。</p><SourceLink href={sourceLinks.eastmoneyMarket} label="东方财富行情原页" /></details>
       <div className="daily-hub">
         <nav>{Object.keys(dailySources).map((group) => <button key={group} className={sourceGroup === group ? "active" : ""} onClick={() => setSourceGroup(group)}>{group}<small>{dailySources[group].length} 源</small></button>)}</nav>
         <section>
@@ -1063,16 +1235,23 @@ function DailyPage({ items, favorites, toggleFavorite, go }) {
         </section>
       </div>
       <section className="digest"><div><b>📌 今日导读：</b>CPO/光模块位于第一优先级；其次为 HBM、先进封装与晶圆设备。</div><small>阅读路径：1 分钟速览 → 10 分钟分页 → 1 小时 KOL 深读专题包 <SourceLink href={sourceLinks.broadcomCpo} label="判断输入原始网站" compact /></small></section>
-      <SectionTitle icon="◉" title="今日三条投资判断" note="结论先行，并给出可证伪变量" />
+      <SectionTitle icon="◉" title="今日新增与持续跟踪观点" note="新增观点置顶 · 历史判断完整保留 · 每条给出可证伪变量" />
       <div className="verdict-list">
         {[
+          ["A股盘后", "剧烈回调后先判断交易结构，再判断产业趋势是否反转", "新增判断：硅片、AI 设备、光通信和封测算术平均跌幅较大，但单日价格不能替代基本面；后续核验成交额、龙头相对收益、订单和盈利预期是否同步下修。", sourceLinks.eastmoneyMarket],
+          ["存储", "Samsung 业绩把 HBM 高景气从预期重新拉回财务验证", "新增判断：同时核验 HBM4 产品结构、传统 DRAM/NAND 价格、先进封装能力和资本开支，任何单项高增都不能替代完整盈利验证。", sourceLinks.samsungQ2],
+          ["半导体设备", "制程复杂度正在成为量检测需求的第二增长曲线", "新增判断：KLA 下一季收入指引抬升，需继续跟踪先进逻辑、存储和先进封装带来的单位产能过程控制强度。", sourceLinks.klaQ4],
+          ["成熟制程", "NXP 的广泛增长为汽车与工业复苏增加公司级证据", "新增判断：区分终端需求复苏和渠道补库存，继续核验汽车订单、工业 IoT 收入、毛利率和三季度指引兑现。", sourceLinks.nxpQ2],
+          ["CPU / IP", "云端 Arm 渗透可能重塑服务器 CPU 与网络芯片价值分配", "新增判断：重点跟踪 Arm 数据中心版税、AGI CPU 量产收入、DPU/SmartNIC 渗透及先进制程供给，而非只看合作名单。", sourceLinks.armQ1],
+          ["高速连接", "AI 互连扩张正在从光模块延伸到连接器、铜缆和光纤组件", "新增判断：Amphenol 财务读数需拆分有机增长、并购贡献、订单和利润率，验证连接价值量是否真正兑现。", sourceLinks.amphenolQ2],
           ["CPO", "可插拔仍是近端业绩主体，CPO 是中期增量期权", "跟踪 1.6T 出货、102.4T 交换平台、CPO 样机转量产与外置激光器订单。", sourceLinks.broadcomCpo],
           ["光器件", "价值量向光芯片、FAU、CW 激光与精密封装迁移", "跟踪上游器件自制率、耦合良率、单通道 200G 认证和供给份额。", sourceLinks.coherentCpo],
           ["估值", "高景气必须由份额与盈利兑现，而非速率升级叙事", "跟踪收入结构、毛利率、客户集中度、存货与资本开支回报。", sourceLinks.sec],
         ].map(([tag, title, copy, url], i) => <article className="verdict" key={tag}><span className="number">{i + 1}</span><div><span className="pill">{tag}</span><b>{title}</b><p><b>AI 判断：</b>{copy}</p><SourceLink href={url} label="原始网站" compact /></div></article>)}
       </div>
       <SectionTitle icon="⌁" title="今日重点事件" note="跨日去重 · A/B 来源优先" action={<button className="text-btn" onClick={() => go("events")}>查看全部 →</button>} />
-      {items.slice(0, 6).map((item) => <EventCard key={item.id} item={item} favorite={favorites.includes(item.id)} onFavorite={toggleFavorite} />)}
+      {items.slice(0, 12).map((item) => <EventCard key={item.id} item={item} favorite={favorites.includes(item.id)} onFavorite={toggleFavorite} />)}
+      {items.length > 12 && <details className="historical-events"><summary>展开此前持续跟踪事件（{items.length - 12} 条，原内容完整保留）</summary>{items.slice(12).map((item) => <EventCard key={item.id} item={item} favorite={favorites.includes(item.id)} onFavorite={toggleFavorite} />)}</details>}
     </>
   );
 }
@@ -1095,6 +1274,8 @@ function HighFreqPage() {
         <MetricCard label="光互连景气" value="高位" delta="结构升级" note="多源交叉 · B" tone="purple" points={[55,58,63,71,82,91]} sourceUrl={sourceLinks.coherentCpo} />
         <MetricCard label="风险温度" value="中等" delta="估值/降价" note="研究模型 · C" tone="green" points={[42,48,45,51,49,54]} sourceUrl={sourceLinks.sec} />
       </div>
+      <SectionTitle icon="↗" title="07-29 至今 A股半导体行情广度" note={`266 个证券 · 行业/全样本均为算术平均 · 更新 ${MARKET_HISTORY_GENERATED_AT}`} />
+      <div className="capex-table-wrap"><table className="capex-table"><thead><tr><th>交易日</th><th>全样本均幅</th><th>上涨 / 下跌</th><th>领涨行业</th><th>相对落后</th><th>行情原页</th></tr></thead><tbody>{dailyMarketArchive.map((day) => <tr key={day.date} data-search={`${day.date} ${day.leaders.map((x) => x.sector).join(" ")} ${day.laggards.map((x) => x.sector).join(" ")}`}><td>{day.date}</td><td><span className={day.averageChange >= 0 ? "up" : "down"}>{day.averageChange > 0 ? "+" : ""}{day.averageChange.toFixed(2)}%</span></td><td>{day.rising} / {day.falling}</td><td>{day.leaders[0]?.sector} {day.leaders[0]?.averageChange > 0 ? "+" : ""}{day.leaders[0]?.averageChange.toFixed(2)}%</td><td>{day.laggards[0]?.sector} {day.laggards[0]?.averageChange > 0 ? "+" : ""}{day.laggards[0]?.averageChange.toFixed(2)}%</td><td><SourceLink href={sourceLinks.eastmoneyMarket} label="核验" compact /></td></tr>)}</tbody></table></div>
       <div className="capex-table-wrap"><table className="capex-table"><thead><tr><th>指标</th><th>当前信号</th><th>核心观测</th><th>频率</th><th>原始网站</th></tr></thead><tbody>{rows.map(([name, signal, watch, frequency, url])=><tr key={name} data-search={`${name} ${signal} ${watch}`}><td>{name}</td><td>{signal}</td><td>{watch}</td><td>{frequency}</td><td><SourceLink href={url} label="查看" compact /></td></tr>)}</tbody></table></div>
     </>
   );
@@ -1146,17 +1327,42 @@ function CPOPage() {
 }
 
 function StatementPage() {
-  return <><SectionTitle icon="◌" title="公司发言墙" note="AI 转述 · 下一验证点 · 每条附原始网站" /><div className="research-list">{[["Broadcom","交换芯片与光系统协同是带宽密度升级的重要方向","下一验证：CPO 客户导入与量产节奏",sourceLinks.broadcomCpo],["Corning","AI 数据中心推动企业网络与高密度光连接需求","下一验证：分部增速和大客户协议兑现",sourceLinks.corningAi],["Coherent","高速数据通信需求牵引激光器、器件与模块组合","下一验证：供给瓶颈与毛利修复",sourceLinks.coherentCpo],["中际旭创","高速率产品升级是结构性增长主线","下一验证：1.6T 产品占比、价格与盈利",sourceLinks.innolightIr],["天孚通信","精密光器件与先进封装能力决定客户黏性","下一验证：新产品认证和产能利用率",sourceLinks.cninfo]].map(([c,q,n,url],i)=><article key={c} data-search={`${c} ${q} ${n}`}><span className="research-index">{i+1}</span><div><span className="pill">{c}</span><b>AI 转述：{q}</b><p>{n}</p><small>非逐字引语，正式引用请打开原披露核验 <SourceLink href={url} label="原始网站" compact /></small></div></article>)}</div></>;
+  return <><SectionTitle icon="◌" title="公司发言墙" note="07-29 至今新增置顶 · AI 转述 · 下一验证点 · 每条附原始网站" /><div className="research-list">{[
+    ["AMD","数据中心已成为收入增长核心，GPU 与 EPYC 需求共同驱动 Q2 数据中心收入翻倍","下一验证：Q3 130 亿美元收入指引、MI450/Helios 客户与毛利率","https://ir.amd.com/news-events/press-releases/detail/1295/amd-reports-second-quarter-2026-financial-results"],
+    ["Amazon","AWS 加速至 37% 增长，AI 与自研芯片业务均达到超过 250 亿美元年化收入","下一验证：基础设施投入、自由现金流与 Trainium 规模部署","https://www.aboutamazon.com/news/company-news/amazon-earnings-q2-2026-report"],
+    ["Microsoft","Azure 增长 43%，Azure 年收入首次超过 1000 亿美元","下一验证：FY27 capex、折旧、网络投入与 AI 产能约束",sourceLinks.microsoftQ4],
+    ["Meta","AI 正在加速核心业务，同时基础设施投入继续处于高位","下一验证：全年 capex、自由现金流、定制芯片与网络扩张",sourceLinks.metaQ2],
+    ["Broadcom","交换芯片与光系统协同是带宽密度升级的重要方向","下一验证：CPO 客户导入与量产节奏",sourceLinks.broadcomCpo],
+    ["Corning","AI 数据中心推动企业网络与高密度光连接需求","下一验证：分部增速和大客户协议兑现",sourceLinks.corningAi],
+    ["Coherent","高速数据通信需求牵引激光器、器件与模块组合","下一验证：供给瓶颈与毛利修复",sourceLinks.coherentCpo],
+    ["中际旭创","高速率产品升级是结构性增长主线","下一验证：1.6T 产品占比、价格与盈利",sourceLinks.innolightIr],
+    ["天孚通信","精密光器件与先进封装能力决定客户黏性","下一验证：新产品认证和产能利用率",sourceLinks.cninfo],
+  ].map(([c,q,n,url],i)=><article key={c} data-search={`${c} ${q} ${n}`}><span className="research-index">{i+1}</span><div><span className="pill">{c}</span><b>AI 转述：{q}</b><p>{n}</p><small>非逐字引语，正式引用请打开原披露核验 <SourceLink href={url} label="原始网站" compact /></small></div></article>)}</div></>;
 }
 
 function TapePage() {
-  return <><SectionTitle icon="≋" title="半导体 Tape" note="宏观、卖方调整与跨资产信号" /><div className="timeline">{[["07-29","光通信","市场重新定价 1.6T 产品结构与年降假设","分歧",sourceLinks.eoptolink16t],["07-29","设备","先进逻辑与存储资本开支保持高位","确认",sourceLinks.semi],["07-28","存储","HBM 与传统 DRAM/NAND 继续分化","上调",sourceLinks.micron],["07-28","AI 基建","云厂自由现金流成为 capex 可持续性约束","观察",sourceLinks.sec],["07-27","政策","出口限制与本地化扩产影响设备订单节奏","风险",sourceLinks.asml]].map(([d,t,c,s,url])=><article key={d+t} data-search={`${d} ${t} ${c} ${s}`}><time>{d}</time><span>{t}</span><b>AI 归纳：{c}</b><em>{s}</em><SourceLink href={url} label="原始网站" compact /></article>)}</div></>;
+  return <><SectionTitle icon="≋" title="半导体 Tape" note="07-29 至今 · 行情结构、财务信号与下一验证点" /><div className="timeline">{[
+    ["08-11","光器件","Lumentum 今晚披露，CW 激光、高速器件供给与毛利率是 CPO 链关键财务读数","前瞻",sourceLinks.lumentum],
+    ["08-10","设备","A股设备与零部件逆势占优，行情从普涨转向订单和国产份额验证","确认",sourceLinks.eastmoneyMarket],
+    ["08-07","PCB材料","CCL、铜箔与 PCB 同步领涨，高速板材升级成为交易焦点","上调",sourceLinks.eastmoneyMarket],
+    ["08-05","存储","Sandisk 财报窗口验证 NAND 定价、eSSD 与长协模式","确认","https://investor.sandisk.com/news-events/news-releases"],
+    ["08-04","AI芯片","AMD Q2 收入 115 亿美元，数据中心收入 67 亿美元、同比增长 107%","确认","https://ir.amd.com/news-events/press-releases/detail/1295/amd-reports-second-quarter-2026-financial-results"],
+    ["07-30","云厂","Amazon AWS 增长 37%，AI 与芯片业务年化收入均超过 250 亿美元","确认","https://www.aboutamazon.com/news/company-news/amazon-earnings-q2-2026-report"],
+    ["07-29","光通信","市场重新定价 1.6T 产品结构与年降假设","分歧",sourceLinks.eoptolink16t],
+    ["07-29","设备","先进逻辑与存储资本开支保持高位","确认",sourceLinks.semi],
+    ["07-28","存储","HBM 与传统 DRAM/NAND 继续分化","上调",sourceLinks.micron],
+  ].map(([d,t,c,s,url])=><article key={d+t} data-search={`${d} ${t} ${c} ${s}`}><time>{d}</time><span>{t}</span><b>AI 归纳：{c}</b><em>{s}</em><SourceLink href={url} label="原始网站" compact /></article>)}</div></>;
 }
 
 function KnowledgePage() {
-  const terms = [["CPO","Co-Packaged Optics，光引擎与交换 ASIC 共封装"],["NPO","Near-Packaged Optics，光引擎靠近但不与 ASIC 同封装"],["LPO","Linear Pluggable Optics，弱化 DSP 以降低功耗"],["硅光","在硅平台集成调制、耦合等光学功能"],["EML","电吸收调制激光器，高速光模块常见光源方案"],["CW Laser","连续波激光器，CPO 外置光源的重要候选"],["FAU","Fiber Array Unit，光纤阵列组件"],["DSP","数字信号处理器，改善链路质量但带来功耗和成本"],["SerDes","芯片高速串并转换接口"],["Scale-up","加速器域内高速互连"],["Scale-out","集群节点之间的网络扩展"],["OCS","Optical Circuit Switch，光路交换"]];
-  const termSource = (term) => term === "CW Laser" ? sourceLinks.lumentumCw : ["CPO","NPO","LPO","硅光","FAU","OCS"].includes(term) ? sourceLinks.broadcomCpo : term === "DSP" ? sourceLinks.marvellOptical : sourceLinks.openCompute;
-  return <><SectionTitle icon="◎" title="知识解读" note="从术语到投资传导" /><div className="glossary">{terms.map(([t,c])=><article key={t} data-search={`${t} ${c}`}><b>{t}</b><p><b>AI 白话解释：</b>{c}</p><small>投资映射：技术阶段 → 价值环节 → 受益公司 → 验证变量</small><SourceLink href={termSource(t)} label="技术原始网站" compact /></article>)}</div></>;
+  const [category, setCategory] = useState("全部");
+  const visible = category === "全部" ? knowledgeTerms : knowledgeTerms.filter((item) => item.category === category);
+  return <>
+    <SectionTitle icon="◎" title="知识解读" note={`${knowledgeTerms.length} 个专业术语 · 白话解释 → 产业链映射 → 可验证指标`} />
+    <section className="knowledge-intro"><div><small>SEMICONDUCTOR LEARNING MAP</small><h1>把技术名词翻译成可验证的投资逻辑</h1><p>每个术语都回答三件事：它是什么、价值量流向哪里、下一步该看什么数据。术语解释用于研究入门，正式定义以标准组织和公司技术资料为准。</p></div><img src={chainEducationImage} alt="半导体材料、存储与光通信技术示意图" /></section>
+    <div className="filter-row knowledge-filter">{knowledgeCategories.map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{item}</button>)}</div>
+    <div className="glossary glossary-rich">{visible.map((item) => <article key={item.name} data-search={`${item.name} ${item.category} ${item.plain} ${item.investment} ${item.watch}`}><header><span>{item.category}</span><b>{item.name}</b></header><p><b>白话解释：</b>{item.plain}</p><p><b>产业链 / 投资映射：</b>{item.investment}</p><small><b>下一验证：</b>{item.watch}</small><SourceLink href={item.url} label="标准 / 技术原始网站" compact /></article>)}</div>
+  </>;
 }
 
 function EarningsPage() {
